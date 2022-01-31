@@ -57,7 +57,7 @@ func main() {
 
 	nodeName := os.Getenv("NODE_NAME")
 	if nodeName == "" {
-		log.Fatalf("could not retrieve node name")
+		log.Fatalf("node name not provided")
 	}
 
 	spotHandler := handler.NewHandler(log, httpClient, clientset, nodeName)

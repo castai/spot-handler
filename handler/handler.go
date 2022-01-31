@@ -19,7 +19,7 @@ import (
 
 type AzureSpotHandler struct {
 	client    *resty.Client
-	clientset *kubernetes.Clientset
+	clientset kubernetes.Interface
 	nodeName  string
 	log       logrus.FieldLogger
 }
@@ -37,7 +37,7 @@ const azureScheduledEventsBackend = "http://169.254.169.254/metadata/scheduledev
 func NewHandler(
 	log logrus.FieldLogger,
 	client *resty.Client,
-	clientset *kubernetes.Clientset,
+	clientset kubernetes.Interface,
 	nodeName string) *AzureSpotHandler {
 	return &AzureSpotHandler{
 		client:    client,
@@ -48,7 +48,6 @@ func NewHandler(
 }
 
 func (g *AzureSpotHandler) Run(ctx context.Context) error {
-	g.log.Infof("Azure Spot handler starting for node: %s", g.nodeName)
 	t := time.NewTicker(time.Second * 3)
 	defer t.Stop()
 
@@ -58,17 +57,14 @@ func (g *AzureSpotHandler) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			// check interruption
 			err := func() error {
-				interrupted, err := g.CheckInterruption(ctx)
+				interrupted, err := g.checkInterruption(ctx)
 				if err != nil {
 					return err
 				}
 				if interrupted {
 					g.log.Infof("preemption notice received")
-					return g.HandleInterruption(ctx)
+					return g.handleInterruption(ctx)
 				}
-
-				g.log.Infof("Not interrupted")
-
 				return nil
 			}()
 
@@ -79,7 +75,7 @@ func (g *AzureSpotHandler) Run(ctx context.Context) error {
 	}
 }
 
-func (g *AzureSpotHandler) CheckInterruption(ctx context.Context) (bool, error) {
+func (g *AzureSpotHandler) checkInterruption(ctx context.Context) (bool, error) {
 	responseBody := azureSpotScheduledEvents{}
 
 	req := g.client.NewRequest().SetContext(ctx).SetResult(&responseBody)
@@ -102,8 +98,7 @@ func (g *AzureSpotHandler) CheckInterruption(ctx context.Context) (bool, error) 
 	return false, nil
 }
 
-func (g *AzureSpotHandler) GetSelfNode(ctx context.Context) (*v1.Node, error) {
-	g.log.Debugf("getting node: %s", g.nodeName)
+func (g *AzureSpotHandler) getSelfNode(ctx context.Context) (*v1.Node, error) {
 	node, err := g.clientset.CoreV1().Nodes().Get(ctx, g.nodeName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -115,8 +110,8 @@ func (g *AzureSpotHandler) GetSelfNode(ctx context.Context) (*v1.Node, error) {
 	return node, nil
 }
 
-func (g *AzureSpotHandler) HandleInterruption(ctx context.Context) error {
-	selfNode, err := g.GetSelfNode(ctx)
+func (g *AzureSpotHandler) handleInterruption(ctx context.Context) error {
+	selfNode, err := g.getSelfNode(ctx)
 	if err != nil {
 		return err
 	}
