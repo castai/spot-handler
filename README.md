@@ -1,0 +1,1 @@
+# CAST AI Azure spot handler
