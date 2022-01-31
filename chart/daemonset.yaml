@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: azure-spot-handler
+  namespace: castai-agent
+spec:
+  selector:
+    matchLabels:
+      name: azure-spot-handler
+  template:
+    metadata:
+      labels:
+        name: azure-spot-handler
+    spec:
+      serviceAccount: azure-spot-handler
+      tolerations:
+        - key: kubernetes.azure.com/scalesetpriority
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        kubernetes.azure.com/scalesetpriority: spot
+      containers:
+        - name: azure-spot-handler
+          image: handlertestregistry.azurecr.io/matas/castai-spot-handler:v0.0.5
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+      terminationGracePeriodSeconds: 30
