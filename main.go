@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	"azure-spot-handler/handler"
+	"azure-spot-handler/internal/config"
 	"azure-spot-handler/internal/version"
 )
 
@@ -25,6 +26,8 @@ var (
 )
 
 func main() {
+	cfg := config.Get()
+
 	logger := logrus.New()
 	log := logrus.WithFields(logrus.Fields{})
 	httpClient := NewDefaultClient()
@@ -60,15 +63,17 @@ func main() {
 		log.Fatalf("node name not provided")
 	}
 
-	spotHandler := handler.NewHandler(log, httpClient, clientset, nodeName)
+	spotHandler := handler.NewHandler(log, httpClient, clientset, cfg.PollIntervalSeconds, nodeName)
 
-	go func() {
-		addr := fmt.Sprintf(":%d", 6060)
-		log.Infof("starting pprof server on %s", addr)
-		if err := http.ListenAndServe(addr, http.DefaultServeMux); err != nil {
-			log.Errorf("failed to start pprof http server: %v", err)
-		}
-	}()
+	if cfg.PprofPort != 0 {
+		go func() {
+			addr := fmt.Sprintf(":%d", cfg.PprofPort)
+			log.Infof("starting pprof server on %s", addr)
+			if err := http.ListenAndServe(addr, http.DefaultServeMux); err != nil {
+				log.Errorf("failed to start pprof http server: %v", err)
+			}
+		}()
+	}
 
 	if err := spotHandler.Run(signals.SetupSignalHandler()); err != nil {
 		logErr := &logContextErr{}
@@ -83,9 +88,7 @@ func main() {
 func NewDefaultClient() *resty.Client {
 	client := resty.New()
 
-	//client.SetRetryCount(defaultRetryCount)
-	client.SetRetryCount(10)
-	//client.SetTimeout(defaultTimeout)
+	// times out if set to 1 second, after 2 we will try again soon anyway
 	client.SetTimeout(time.Second * 2)
 
 	return client

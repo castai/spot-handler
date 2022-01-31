@@ -27,4 +27,9 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: POLL_INTERVAL_SECONDS
+              value: 3
+            - name: PPROF_PORT
+              value: 6060
+
       terminationGracePeriodSeconds: 30

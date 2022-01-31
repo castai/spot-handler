@@ -18,10 +18,11 @@ import (
 )
 
 type AzureSpotHandler struct {
-	client    *resty.Client
-	clientset kubernetes.Interface
-	nodeName  string
-	log       logrus.FieldLogger
+	client           *resty.Client
+	clientset        kubernetes.Interface
+	nodeName         string
+	pollWaitInterval int
+	log              logrus.FieldLogger
 }
 
 type azureSpotScheduledEvent struct {
@@ -38,17 +39,19 @@ func NewHandler(
 	log logrus.FieldLogger,
 	client *resty.Client,
 	clientset kubernetes.Interface,
+	pollWaitInterval int,
 	nodeName string) *AzureSpotHandler {
 	return &AzureSpotHandler{
-		client:    client,
-		clientset: clientset,
-		log:       log,
-		nodeName:  nodeName,
+		client:           client,
+		clientset:        clientset,
+		log:              log,
+		nodeName:         nodeName,
+		pollWaitInterval: pollWaitInterval,
 	}
 }
 
 func (g *AzureSpotHandler) Run(ctx context.Context) error {
-	t := time.NewTicker(time.Second * 3)
+	t := time.NewTicker(time.Duration(g.pollWaitInterval) * time.Second)
 	defer t.Stop()
 
 	for {
