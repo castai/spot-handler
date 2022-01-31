@@ -18,6 +18,12 @@ import (
 	"azure-spot-handler/internal/version"
 )
 
+var (
+	GitCommit = "undefined"
+	GitRef    = "no-ref"
+	Version   = "local"
+)
+
 func main() {
 	logger := logrus.New()
 	log := logrus.WithFields(logrus.Fields{})
@@ -38,8 +44,14 @@ func main() {
 		log.Fatalf("failed getting kubernetes version: %v", err)
 	}
 
+	handlerVersion := &version.HandlerVersion{
+		GitCommit: GitCommit,
+		GitRef:    GitRef,
+		Version:   Version,
+	}
+
 	log = logger.WithFields(logrus.Fields{
-		"version":     "0.0.1",
+		"version":     handlerVersion,
 		"k8s_version": k8sVersion.Full(),
 	})
 
