@@ -21,15 +21,21 @@ spec:
         kubernetes.azure.com/scalesetpriority: spot
       containers:
         - name: azure-spot-handler
-          image: handlertestregistry.azurecr.io/matas/castai-spot-handler:v0.0.5
+          image: handlertestregistry.azurecr.io/matas/castai-spot-handler:v0.0.1-local
+          imagePullPolicy: Always
           env:
             - name: NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: POLL_INTERVAL_SECONDS
-              value: 3
+              value: "1"
             - name: PPROF_PORT
-              value: 6060
-
+              value: "6060"
+            - name: API_URL
+              value: ""
+            - name: API_KEY
+              value: ""
+            - name: CLUSTER_ID
+              value: ""
       terminationGracePeriodSeconds: 30
