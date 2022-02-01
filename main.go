@@ -7,15 +7,15 @@ import (
 	_ "net/http/pprof"
 	"os"
 
+	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
-	"github.com/sirupsen/logrus"
 
 	"github.com/castai/azure-spot-handler/handler"
+	"github.com/castai/azure-spot-handler/internal/castai"
 	"github.com/castai/azure-spot-handler/internal/config"
 	"github.com/castai/azure-spot-handler/internal/version"
-	"github.com/castai/azure-spot-handler/internal/castai"
 )
 
 var (
