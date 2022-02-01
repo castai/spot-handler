@@ -6,17 +6,16 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"time"
 
-	"github.com/go-resty/resty/v2"
-	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	"github.com/sirupsen/logrus"
 
 	"azure-spot-handler/handler"
 	"azure-spot-handler/internal/config"
 	"azure-spot-handler/internal/version"
+	"azure-spot-handler/internal/castai"
 )
 
 var (
@@ -30,7 +29,10 @@ func main() {
 
 	logger := logrus.New()
 	log := logrus.WithFields(logrus.Fields{})
-	httpClient := NewDefaultClient()
+	httpClient := handler.NewDefaultClient()
+
+	castHttpClient := castai.NewDefaultClient(cfg.APIUrl, cfg.APIKey, logrus.Level(cfg.LogLevel))
+	castClient := castai.NewClient(logger, castHttpClient, cfg.ClusterID)
 
 	kubeconfig, err := retrieveKubeConfig(log)
 	if err != nil {
@@ -63,7 +65,7 @@ func main() {
 		log.Fatalf("node name not provided")
 	}
 
-	spotHandler := handler.NewHandler(log, httpClient, clientset, cfg.PollIntervalSeconds, nodeName)
+	spotHandler := handler.NewHandler(log, httpClient, castClient, clientset, cfg.PollIntervalSeconds, nodeName)
 
 	if cfg.PprofPort != 0 {
 		go func() {
@@ -82,16 +84,6 @@ func main() {
 		}
 		log.Fatalf("azure-spot-handler failed: %v", err)
 	}
-}
-
-// NewDefaultClient configures a default instance of the resty.Client used to do HTTP requests.
-func NewDefaultClient() *resty.Client {
-	client := resty.New()
-
-	// times out if set to 1 second, after 2 we will try again soon anyway
-	client.SetTimeout(time.Second * 2)
-
-	return client
 }
 
 func retrieveKubeConfig(log logrus.FieldLogger) (*rest.Config, error) {

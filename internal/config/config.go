@@ -6,6 +6,10 @@ import (
 )
 
 type Config struct {
+	APIUrl              string
+	APIKey              string
+	ClusterID           string
+	LogLevel            int
 	PprofPort           int
 	PollIntervalSeconds int
 }
@@ -19,6 +23,11 @@ func Get() Config {
 	}
 
 	_ = viper.BindEnv("loglevel", "LOG_LEVEL")
+
+	_ = viper.BindEnv("apikey", "API_KEY")
+	_ = viper.BindEnv("apiurl", "API_URL")
+	_ = viper.BindEnv("clusterid", "CLUSTER_ID")
+
 	_ = viper.BindEnv("pollintervalseconds", "POLL_INTERVAL_SECONDS")
 	_ = viper.BindEnv("pprofport", "PPROF_PORT")
 

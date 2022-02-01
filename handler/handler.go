@@ -15,10 +15,13 @@ import (
 	apitypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
+
+	"azure-spot-handler/internal/castai"
 )
 
 type AzureSpotHandler struct {
 	client           *resty.Client
+	castClient       castai.Client
 	clientset        kubernetes.Interface
 	nodeName         string
 	pollWaitInterval int
@@ -38,11 +41,13 @@ const azureScheduledEventsBackend = "http://169.254.169.254/metadata/scheduledev
 func NewHandler(
 	log logrus.FieldLogger,
 	client *resty.Client,
+	castClient castai.Client,
 	clientset kubernetes.Interface,
 	pollWaitInterval int,
 	nodeName string) *AzureSpotHandler {
 	return &AzureSpotHandler{
 		client:           client,
+		castClient:       castClient,
 		clientset:        clientset,
 		log:              log,
 		nodeName:         nodeName,
@@ -57,7 +62,6 @@ func (g *AzureSpotHandler) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-t.C:
-		case <-ctx.Done():
 			// check interruption
 			err := func() error {
 				interrupted, err := g.checkInterruption(ctx)
@@ -74,6 +78,8 @@ func (g *AzureSpotHandler) Run(ctx context.Context) error {
 			if err != nil {
 				g.log.Errorf("checking for interruption: %v", err)
 			}
+		case <-ctx.Done():
+			return nil
 		}
 	}
 }
@@ -116,6 +122,18 @@ func (g *AzureSpotHandler) getSelfNode(ctx context.Context) (*v1.Node, error) {
 func (g *AzureSpotHandler) handleInterruption(ctx context.Context) error {
 	selfNode, err := g.getSelfNode(ctx)
 	if err != nil {
+		return err
+	}
+
+	req := &castai.CloudEventRequest{
+		EventType: "interrupted",
+		Node:      g.nodeName,
+	}
+
+	err = g.castClient.SendCloudEvent(ctx, req)
+
+	if err != nil {
+		// don't taint if we can't sync with mothership
 		return err
 	}
 
@@ -170,4 +188,13 @@ func (g *AzureSpotHandler) patchNode(ctx context.Context, node *v1.Node, changeF
 
 func defaultBackoff(ctx context.Context) backoff.BackOffContext {
 	return backoff.WithContext(backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 5), ctx)
+}
+
+// NewDefaultClient configures a default instance of the resty.Client used to do HTTP requests.
+func NewDefaultClient() *resty.Client {
+	client := resty.New()
+
+	// times out if set to 1 second, after 2 we will try again soon anyway
+	client.SetTimeout(time.Second * 2)
+	return client
 }
