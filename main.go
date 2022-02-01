@@ -12,10 +12,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	"github.com/sirupsen/logrus"
 
-	"azure-spot-handler/handler"
-	"azure-spot-handler/internal/config"
-	"azure-spot-handler/internal/version"
-	"azure-spot-handler/internal/castai"
+	"github.com/castai/azure-spot-handler/handler"
+	"github.com/castai/azure-spot-handler/internal/config"
+	"github.com/castai/azure-spot-handler/internal/version"
+	"github.com/castai/azure-spot-handler/internal/castai"
 )
 
 var (

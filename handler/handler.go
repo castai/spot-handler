@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
 
-	"azure-spot-handler/internal/castai"
+	"github.com/castai/azure-spot-handler/internal/castai"
 )
 
 type AzureSpotHandler struct {
