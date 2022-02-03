@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
 
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
@@ -24,14 +23,18 @@ var (
 	Version   = "local"
 )
 
+// https://docs.microsoft.com/en-us/azure/virtual-machines/linux/scheduled-events#endpoint-discovery
+const azureScheduledEventsBackend = "http://169.254.169.254"
+
 func main() {
 	cfg := config.Get()
 
 	logger := logrus.New()
 	log := logrus.WithFields(logrus.Fields{})
-	httpClient := handler.NewDefaultClient()
+	httpClient := handler.NewDefaultClient(azureScheduledEventsBackend)
 
-	castHttpClient := castai.NewDefaultClient(cfg.APIUrl, cfg.APIKey, logrus.Level(cfg.LogLevel))
+	// 5 seconds until we timeout calling mothership and retry
+	castHttpClient := castai.NewDefaultClient(cfg.APIUrl, cfg.APIKey, logrus.Level(cfg.LogLevel), 5)
 	castClient := castai.NewClient(logger, castHttpClient, cfg.ClusterID)
 
 	kubeconfig, err := retrieveKubeConfig(log)
@@ -60,12 +63,7 @@ func main() {
 		"k8s_version": k8sVersion.Full(),
 	})
 
-	nodeName := os.Getenv("NODE_NAME")
-	if nodeName == "" {
-		log.Fatalf("node name not provided")
-	}
-
-	spotHandler := handler.NewHandler(log, httpClient, castClient, clientset, cfg.PollIntervalSeconds, nodeName)
+	spotHandler := handler.NewHandler(log, httpClient, castClient, clientset, cfg.PollIntervalSeconds, cfg.NodeName)
 
 	if cfg.PprofPort != 0 {
 		go func() {

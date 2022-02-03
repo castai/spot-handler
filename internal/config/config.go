@@ -7,6 +7,7 @@ import (
 )
 
 type Config struct {
+	NodeName            string
 	APIUrl              string
 	APIKey              string
 	ClusterID           string
@@ -27,6 +28,7 @@ func Get() Config {
 
 	_ = viper.BindEnv("apikey", "API_KEY")
 	_ = viper.BindEnv("apiurl", "API_URL")
+	_ = viper.BindEnv("nodename", "NODE_NAME")
 	_ = viper.BindEnv("clusterid", "CLUSTER_ID")
 
 	_ = viper.BindEnv("pollintervalseconds", "POLL_INTERVAL_SECONDS")
@@ -37,5 +39,19 @@ func Get() Config {
 		panic(fmt.Errorf("parsing configuration: %v", err))
 	}
 
+	if cfg.APIKey == "" {
+		required("API_KEY")
+	}
+	if cfg.APIUrl == "" {
+		required("API_URL")
+	}
+	if cfg.ClusterID == "" {
+		required("CLUSTER_ID")
+	}
+
 	return *cfg
+}
+
+func required(variable string) {
+	panic(fmt.Errorf("env variable %s is required", variable))
 }

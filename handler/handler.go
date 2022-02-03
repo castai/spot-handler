@@ -10,7 +10,6 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apitypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
@@ -35,8 +34,7 @@ type azureSpotScheduledEvents struct {
 	Events []azureSpotScheduledEvent
 }
 
-// https://docs.microsoft.com/en-us/azure/virtual-machines/linux/scheduled-events#endpoint-discovery
-const azureScheduledEventsBackend = "http://169.254.169.254/metadata/scheduledevents?api-version=2020-07-01"
+const CastNodeIDLabel = "provisioner.cast.ai/node-id"
 
 func NewHandler(
 	log logrus.FieldLogger,
@@ -44,7 +42,8 @@ func NewHandler(
 	castClient castai.Client,
 	clientset kubernetes.Interface,
 	pollWaitInterval int,
-	nodeName string) *AzureSpotHandler {
+	nodeName string,
+) *AzureSpotHandler {
 	return &AzureSpotHandler{
 		client:           client,
 		castClient:       castClient,
@@ -70,7 +69,12 @@ func (g *AzureSpotHandler) Run(ctx context.Context) error {
 				}
 				if interrupted {
 					g.log.Infof("preemption notice received")
-					return g.handleInterruption(ctx)
+					err := g.handleInterruption(ctx)
+					if err != nil {
+						return err
+					}
+					// stop after ACK
+					t.Stop()
 				}
 				return nil
 			}()
@@ -89,7 +93,7 @@ func (g *AzureSpotHandler) checkInterruption(ctx context.Context) (bool, error) 
 
 	req := g.client.NewRequest().SetContext(ctx).SetResult(&responseBody)
 	req.SetHeader("Metadata", "true")
-	resp, err := req.Get(azureScheduledEventsBackend)
+	resp, err := req.Get("/metadata/scheduledevents?api-version=2020-07-01")
 	if err != nil {
 		return false, fmt.Errorf("getting metadata/preemtied: %w", err)
 	}
@@ -107,37 +111,23 @@ func (g *AzureSpotHandler) checkInterruption(ctx context.Context) (bool, error) 
 	return false, nil
 }
 
-func (g *AzureSpotHandler) getSelfNode(ctx context.Context) (*v1.Node, error) {
-	node, err := g.clientset.CoreV1().Nodes().Get(ctx, g.nodeName, metav1.GetOptions{})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			g.log.Info("node not found")
-			return nil, err
-		}
-		return nil, err
-	}
-	return node, nil
-}
-
 func (g *AzureSpotHandler) handleInterruption(ctx context.Context) error {
-	selfNode, err := g.getSelfNode(ctx)
+	node, err := g.clientset.CoreV1().Nodes().Get(ctx, g.nodeName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
 	req := &castai.CloudEventRequest{
 		EventType: "interrupted",
-		Node:      g.nodeName,
+		NodeID:    node.Labels[CastNodeIDLabel],
 	}
 
 	err = g.castClient.SendCloudEvent(ctx, req)
-
 	if err != nil {
-		// don't taint if we can't sync with mothership
 		return err
 	}
 
-	return g.taintNode(ctx, selfNode)
+	return g.taintNode(ctx, node)
 }
 
 func (g *AzureSpotHandler) taintNode(ctx context.Context, node *v1.Node) error {
@@ -191,10 +181,11 @@ func defaultBackoff(ctx context.Context) backoff.BackOffContext {
 }
 
 // NewDefaultClient configures a default instance of the resty.Client used to do HTTP requests.
-func NewDefaultClient() *resty.Client {
+func NewDefaultClient(metadataHost string) *resty.Client {
 	client := resty.New()
 
-	// times out if set to 1 second, after 2 we will try again soon anyway
+	client.SetHostURL(metadataHost)
+	// Times out if set to 1 second, after 2 we will try again soon anyway
 	client.SetTimeout(time.Second * 2)
 	return client
 }

@@ -14,11 +14,10 @@ spec:
     spec:
       serviceAccount: azure-spot-handler
       tolerations:
-        - key: kubernetes.azure.com/scalesetpriority
           operator: Exists
           effect: NoSchedule
       nodeSelector:
-        kubernetes.azure.com/scalesetpriority: spot
+        scheduling.cast.ai/spot: true
       containers:
         - name: azure-spot-handler
           image: handlertestregistry.azurecr.io/matas/castai-spot-handler:v0.0.1-local

@@ -3,11 +3,10 @@ package castai
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"time"
-
 	"github.com/go-resty/resty/v2"
 	"github.com/sirupsen/logrus"
+	"net/http"
+	"time"
 )
 
 const headerAPIKey = "X-API-Key"
@@ -25,10 +24,10 @@ func NewClient(log *logrus.Logger, rest *resty.Client, clusterID string) Client 
 }
 
 // NewDefaultClient configures a default instance of the resty.Client used to do HTTP requests.
-func NewDefaultClient(url, key string, level logrus.Level) *resty.Client {
+func NewDefaultClient(url, key string, level logrus.Level, timeoutSeconds int) *resty.Client {
 	client := resty.New()
 	client.SetHostURL(url)
-	client.SetTimeout(5 * time.Second)
+	client.SetTimeout(time.Second * time.Duration(timeoutSeconds))
 	client.Header.Set(http.CanonicalHeaderKey(headerAPIKey), key)
 	if level == logrus.TraceLevel {
 		client.SetDebug(true)
@@ -41,16 +40,12 @@ type client struct {
 	log       *logrus.Logger
 	rest      *resty.Client
 	clusterID string
-	nodeID string
+	nodeID    string
 }
 
-// we only need either Node or NodeID
 type CloudEventRequest struct {
-	EventType string
-	// Node is Cloud ID
-	Node string
-	// NodeID is CAST AI ID
-	NodeID string
+	EventType string `json:"event_type"`
+	NodeID    string `json:"node_id"`
 }
 
 func (c *client) SendCloudEvent(ctx context.Context, req *CloudEventRequest) error {
