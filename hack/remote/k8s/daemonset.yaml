@@ -14,8 +14,8 @@ spec:
     spec:
       serviceAccount: azure-spot-handler
       tolerations:
-          operator: Exists
-          effect: NoSchedule
+          - operator: Exists
+            effect: NoSchedule
       nodeSelector:
         scheduling.cast.ai/spot: true
       containers:
