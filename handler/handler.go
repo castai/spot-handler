@@ -23,7 +23,7 @@ type AzureSpotHandler struct {
 	castClient       castai.Client
 	clientset        kubernetes.Interface
 	nodeName         string
-	pollWaitInterval int
+	pollWaitInterval time.Duration
 	log              logrus.FieldLogger
 }
 
@@ -41,7 +41,7 @@ func NewHandler(
 	client *resty.Client,
 	castClient castai.Client,
 	clientset kubernetes.Interface,
-	pollWaitInterval int,
+	pollWaitInterval time.Duration,
 	nodeName string,
 ) *AzureSpotHandler {
 	return &AzureSpotHandler{
@@ -55,7 +55,7 @@ func NewHandler(
 }
 
 func (g *AzureSpotHandler) Run(ctx context.Context) error {
-	t := time.NewTicker(time.Duration(g.pollWaitInterval) * time.Second)
+	t := time.NewTicker(g.pollWaitInterval)
 	defer t.Stop()
 
 	for {

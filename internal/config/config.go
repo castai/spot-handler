@@ -48,6 +48,9 @@ func Get() Config {
 	if cfg.ClusterID == "" {
 		required("CLUSTER_ID")
 	}
+	if cfg.NodeName == "" {
+		required("NODE_NAME")
+	}
 
 	return *cfg
 }

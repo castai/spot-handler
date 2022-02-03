@@ -24,10 +24,10 @@ func NewClient(log *logrus.Logger, rest *resty.Client, clusterID string) Client 
 }
 
 // NewDefaultClient configures a default instance of the resty.Client used to do HTTP requests.
-func NewDefaultClient(url, key string, level logrus.Level, timeoutSeconds int) *resty.Client {
+func NewDefaultClient(url, key string, level logrus.Level, timeout time.Duration) *resty.Client {
 	client := resty.New()
 	client.SetHostURL(url)
-	client.SetTimeout(time.Second * time.Duration(timeoutSeconds))
+	client.SetTimeout(timeout)
 	client.Header.Set(http.CanonicalHeaderKey(headerAPIKey), key)
 	if level == logrus.TraceLevel {
 		client.SetDebug(true)

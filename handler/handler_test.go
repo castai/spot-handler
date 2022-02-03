@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,13 +23,13 @@ func TestRunLoop(t *testing.T) {
 	log.SetLevel(logrus.DebugLevel)
 
 	nodeName := "AI"
-	castNodeName := "CAST"
+	castNodeID := "CAST"
 
 	node := &v1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: nodeName,
 			Labels: map[string]string {
-				CastNodeIDLabel: castNodeName,
+				CastNodeIDLabel: castNodeID,
 			},
 		},
 		Spec: v1.NodeSpec{
@@ -58,22 +59,21 @@ func TestRunLoop(t *testing.T) {
 
 		castS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, re *http.Request) {
 			mothershipCalls++
-
 			var req castai.CloudEventRequest
 			json.NewDecoder(re.Body).Decode(&req)
-			r.Equal(req.NodeID, castNodeName)
+			r.Equal(req.NodeID, castNodeID)
 			w.WriteHeader(http.StatusOK)
 		}))
 		defer castS.Close()
 
 		fakeApi := fake.NewSimpleClientset(node)
-		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 1)
+		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 50 * time.Millisecond)
 		mockCastClient := castai.NewClient(log, castHttp, "test1")
 
 		mockHttp := NewDefaultClient(s.URL)
 
 		handler := AzureSpotHandler{
-			pollWaitInterval: 1,
+			pollWaitInterval: 10 * time.Millisecond,
 			client: mockHttp,
 			castClient: mockCastClient,
 			nodeName: nodeName,
@@ -82,18 +82,18 @@ func TestRunLoop(t *testing.T) {
 		}
 
 
-		ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
-		handler.Run(ctx)
+		ctx, _ := context.WithTimeout(context.Background(), time.Second)
+		err := handler.Run(ctx)
+		require.NoError(t, err)
+		r.Equal(1, mothershipCalls)
 
-		defer func(){
-			cancel()
-			r.Equal(1, mothershipCalls)
-			node, _ = fakeApi.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
-			r.Equal(true, node.Spec.Unschedulable)
-		}()
+		node, _ = fakeApi.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+		r.Equal(true, node.Spec.Unschedulable)
 	})
 
 	t.Run("handle mock interruption retries", func (t *testing.T) {
+		m := sync.Mutex{}
+
 		mothershipCalls := 0
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			mockInterrupt := azureSpotScheduledEvent{
@@ -114,16 +114,20 @@ func TestRunLoop(t *testing.T) {
 		defer s.Close()
 
 		castS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, re *http.Request) {
+			// locking for predictable test result
+			m.Lock()
 			mothershipCalls++
 
 			if mothershipCalls >= 3 {
+				m.Unlock()
 				var req castai.CloudEventRequest
 				json.NewDecoder(re.Body).Decode(&req)
-				r.Equal(req.NodeID, castNodeName)
+				r.Equal(req.NodeID, castNodeID)
 				w.WriteHeader(http.StatusOK)
 			} else {
+				m.Unlock()
 				log.Infof("Mothership hanging")
-				time.Sleep(time.Second * 5)
+				time.Sleep(time.Millisecond * 100)
 				log.Infof("Mothership responding")
 				w.WriteHeader(http.StatusGatewayTimeout)
 			}
@@ -131,13 +135,13 @@ func TestRunLoop(t *testing.T) {
 		defer castS.Close()
 
 		fakeApi := fake.NewSimpleClientset(node)
-		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 1)
+		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, time.Millisecond * 10)
 		mockCastClient := castai.NewClient(log, castHttp, "test1")
 
 		mockHttp := NewDefaultClient(s.URL)
 
 		handler := AzureSpotHandler{
-			pollWaitInterval: 1,
+			pollWaitInterval: time.Millisecond * 10,
 			client: mockHttp,
 			castClient: mockCastClient,
 			nodeName: nodeName,
@@ -146,7 +150,7 @@ func TestRunLoop(t *testing.T) {
 		}
 
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		handler.Run(ctx)
 
 		defer func(){

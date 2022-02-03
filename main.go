@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
@@ -34,7 +35,7 @@ func main() {
 	httpClient := handler.NewDefaultClient(azureScheduledEventsBackend)
 
 	// 5 seconds until we timeout calling mothership and retry
-	castHttpClient := castai.NewDefaultClient(cfg.APIUrl, cfg.APIKey, logrus.Level(cfg.LogLevel), 5)
+	castHttpClient := castai.NewDefaultClient(cfg.APIUrl, cfg.APIKey, logrus.Level(cfg.LogLevel), 5 * time.Second)
 	castClient := castai.NewClient(logger, castHttpClient, cfg.ClusterID)
 
 	kubeconfig, err := retrieveKubeConfig(log)
@@ -63,7 +64,7 @@ func main() {
 		"k8s_version": k8sVersion.Full(),
 	})
 
-	spotHandler := handler.NewHandler(log, httpClient, castClient, clientset, cfg.PollIntervalSeconds, cfg.NodeName)
+	spotHandler := handler.NewHandler(log, httpClient, castClient, clientset, time.Duration(cfg.PollIntervalSeconds) * time.Second, cfg.NodeName)
 
 	if cfg.PprofPort != 0 {
 		go func() {
