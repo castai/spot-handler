@@ -151,7 +151,8 @@ func TestRunLoop(t *testing.T) {
 
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		handler.Run(ctx)
+		err := handler.Run(ctx)
+		require.NoError(t, err)
 
 		defer func(){
 			cancel()
