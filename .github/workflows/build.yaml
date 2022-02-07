@@ -3,13 +3,13 @@ name: Build
 on:
   push:
     branches:
-      - main
+      - master
   release:
     types:
       - published
   pull_request:
     branches:
-      - main
+      - master
 
 jobs:
   build:
@@ -37,7 +37,7 @@ jobs:
         run: echo "RELEASE_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
       - name: Build Go binary
-        run: go build -ldflags "-s -w -X main.GitCommit=$GITHUB_SHA -X main.GitRef=$GITHUB_REF -X main.Version=${RELEASE_TAG:-commit-$GITHUB_SHA}" -o bin/azure-spot-handler .
+        run: go build -ldflags "-s -w -X master.GitCommit=$GITHUB_SHA -X master.GitRef=$GITHUB_REF -X master.Version=${RELEASE_TAG:-commit-$GITHUB_SHA}" -o bin/azure-spot-handler .
         env:
           GOOS: linux
           GOARCH: amd64
@@ -58,7 +58,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Build and push main
+      - name: Build and push master
         if: github.event_name != 'release'
         uses: docker/build-push-action@v2
         with:
