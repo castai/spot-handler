@@ -67,13 +67,13 @@ func TestRunLoop(t *testing.T) {
 		defer castS.Close()
 
 		fakeApi := fake.NewSimpleClientset(node)
-		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 50 * time.Millisecond)
+		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 100 * time.Millisecond)
 		mockCastClient := castai.NewClient(log, castHttp, "test1")
 
 		mockHttp := NewDefaultClient(s.URL)
 
 		handler := AzureSpotHandler{
-			pollWaitInterval: 10 * time.Millisecond,
+			pollWaitInterval: 100 * time.Millisecond,
 			client: mockHttp,
 			castClient: mockCastClient,
 			nodeName: nodeName,
@@ -119,11 +119,11 @@ func TestRunLoop(t *testing.T) {
 			mothershipCalls++
 
 			if mothershipCalls >= 3 {
-				m.Unlock()
 				var req castai.CloudEventRequest
 				json.NewDecoder(re.Body).Decode(&req)
 				r.Equal(req.NodeID, castNodeID)
 				w.WriteHeader(http.StatusOK)
+				m.Unlock()
 			} else {
 				m.Unlock()
 				log.Infof("Mothership hanging")
@@ -135,13 +135,13 @@ func TestRunLoop(t *testing.T) {
 		defer castS.Close()
 
 		fakeApi := fake.NewSimpleClientset(node)
-		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, time.Millisecond * 10)
+		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, time.Millisecond * 100)
 		mockCastClient := castai.NewClient(log, castHttp, "test1")
 
 		mockHttp := NewDefaultClient(s.URL)
 
 		handler := AzureSpotHandler{
-			pollWaitInterval: time.Millisecond * 10,
+			pollWaitInterval: time.Millisecond * 100,
 			client: mockHttp,
 			castClient: mockCastClient,
 			nodeName: nodeName,
