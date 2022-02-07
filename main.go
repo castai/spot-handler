@@ -40,12 +40,12 @@ func main() {
 
 	kubeconfig, err := retrieveKubeConfig(log)
 	if err != nil {
-		log.Fatalf("err retrieving kubeconfig: %w", err)
+		log.Fatalf("err retrieving kubeconfig: %v", err)
 	}
 
 	clientset, err := kubernetes.NewForConfig(kubeconfig)
 	if err != nil {
-		log.Fatalf("err creating clientset: %w", err)
+		log.Fatalf("err creating clientset: %v", err)
 	}
 
 	k8sVersion, err := version.Get(clientset)
@@ -97,4 +97,12 @@ func retrieveKubeConfig(log logrus.FieldLogger) (*rest.Config, error) {
 type logContextErr struct {
 	err    error
 	fields logrus.Fields
+}
+
+func (e *logContextErr) Error() string {
+	return e.err.Error()
+}
+
+func (e *logContextErr) Unwrap() error {
+	return e.err
 }
