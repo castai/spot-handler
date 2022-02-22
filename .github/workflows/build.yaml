@@ -37,7 +37,7 @@ jobs:
         run: echo "RELEASE_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
       - name: Build Go binary
-        run: go build -ldflags "-s -w -X main.GitCommit=$GITHUB_SHA -X main.GitRef=$GITHUB_REF -X main.Version=${RELEASE_TAG:-commit-$GITHUB_SHA}" -o bin/azure-spot-handler .
+        run: go build -ldflags "-s -w -X main.GitCommit=$GITHUB_SHA -X main.GitRef=$GITHUB_REF -X main.Version=${RELEASE_TAG:-commit-$GITHUB_SHA}" -o bin/spot-handler .
         env:
           GOOS: linux
           GOARCH: amd64
@@ -64,7 +64,7 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
-          tags: castai/azure-spot-handler:${{ github.sha }}
+          tags: castai/spot-handler:${{ github.sha }}
 
       - name: Build and push release
         if: github.event_name == 'release'
@@ -73,5 +73,5 @@ jobs:
           context: .
           push: true
           tags: |
-            castai/azure-spot-handler:${{ env.RELEASE_TAG }}
-            castai/azure-spot-handler:latest
+            castai/spot-handler:${{ env.RELEASE_TAG }}
+            castai/spot-handler:latest
