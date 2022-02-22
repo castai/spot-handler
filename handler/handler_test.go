@@ -3,13 +3,15 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"github.com/castai/azure-spot-handler/internal/castai"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/castai/azure-spot-handler/internal/castai"
 
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -28,7 +30,7 @@ func TestRunLoop(t *testing.T) {
 	node := &v1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: nodeName,
-			Labels: map[string]string {
+			Labels: map[string]string{
 				CastNodeIDLabel: castNodeID,
 			},
 		},
@@ -37,52 +39,34 @@ func TestRunLoop(t *testing.T) {
 		},
 	}
 
-	t.Run("handle successful mock interruption", func (t *testing.T) {
+	t.Run("handle successful mock interruption", func(t *testing.T) {
 		mothershipCalls := 0
-		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			mockInterrupt := azureSpotScheduledEvent{
-				EventType: "Preempt",
-			}
-			eventsWrapper := azureSpotScheduledEvents{
-				Events: []azureSpotScheduledEvent{mockInterrupt},
-			}
-
-			b, err := json.Marshal(eventsWrapper)
-			require.NoError(t, err)
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(b)
-			require.NoError(t, err)
-		}))
-		defer s.Close()
-
 		castS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, re *http.Request) {
 			mothershipCalls++
 			var req castai.CloudEventRequest
-			json.NewDecoder(re.Body).Decode(&req)
+			r.NoError(json.NewDecoder(re.Body).Decode(&req))
 			r.Equal(req.NodeID, castNodeID)
 			w.WriteHeader(http.StatusOK)
 		}))
 		defer castS.Close()
 
 		fakeApi := fake.NewSimpleClientset(node)
-		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 100 * time.Millisecond)
+		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 100*time.Millisecond)
 		mockCastClient := castai.NewClient(log, castHttp, "test1")
 
-		mockHttp := NewDefaultClient(s.URL)
-
-		handler := AzureSpotHandler{
+		mockInterrupt := &mockInterruptChecker{interrupted: true}
+		handler := SpotHandler{
 			pollWaitInterval: 100 * time.Millisecond,
-			client: mockHttp,
-			castClient: mockCastClient,
-			nodeName: nodeName,
-			clientset: fakeApi,
-			log: log,
+			interruptChecker: mockInterrupt,
+			castClient:       mockCastClient,
+			nodeName:         nodeName,
+			clientset:        fakeApi,
+			log:              log,
 		}
 
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
 
-		ctx, _ := context.WithTimeout(context.Background(), time.Second)
 		err := handler.Run(ctx)
 		require.NoError(t, err)
 		r.Equal(1, mothershipCalls)
@@ -91,28 +75,10 @@ func TestRunLoop(t *testing.T) {
 		r.Equal(true, node.Spec.Unschedulable)
 	})
 
-	t.Run("handle mock interruption retries", func (t *testing.T) {
+	t.Run("handle mock interruption retries", func(t *testing.T) {
 		m := sync.Mutex{}
 
 		mothershipCalls := 0
-		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			mockInterrupt := azureSpotScheduledEvent{
-				EventType: "Preempt",
-			}
-			eventsWrapper := azureSpotScheduledEvents{
-				Events: []azureSpotScheduledEvent{mockInterrupt},
-			}
-
-			b, err := json.Marshal(eventsWrapper)
-			require.NoError(t, err)
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(b)
-			require.NoError(t, err)
-		}))
-		defer s.Close()
-
 		castS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, re *http.Request) {
 			// locking for predictable test result
 			m.Lock()
@@ -120,7 +86,7 @@ func TestRunLoop(t *testing.T) {
 
 			if mothershipCalls >= 3 {
 				var req castai.CloudEventRequest
-				json.NewDecoder(re.Body).Decode(&req)
+				r.NoError(json.NewDecoder(re.Body).Decode(&req))
 				r.Equal(req.NodeID, castNodeID)
 				w.WriteHeader(http.StatusOK)
 				m.Unlock()
@@ -135,28 +101,34 @@ func TestRunLoop(t *testing.T) {
 		defer castS.Close()
 
 		fakeApi := fake.NewSimpleClientset(node)
-		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, time.Millisecond * 100)
+		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, time.Millisecond*100)
 		mockCastClient := castai.NewClient(log, castHttp, "test1")
 
-		mockHttp := NewDefaultClient(s.URL)
-
-		handler := AzureSpotHandler{
+		mockInterrupt := &mockInterruptChecker{interrupted: true}
+		handler := SpotHandler{
 			pollWaitInterval: time.Millisecond * 100,
-			client: mockHttp,
-			castClient: mockCastClient,
-			nodeName: nodeName,
-			clientset: fakeApi,
-			log: log,
+			interruptChecker: mockInterrupt,
+			castClient:       mockCastClient,
+			nodeName:         nodeName,
+			clientset:        fakeApi,
+			log:              log,
 		}
-
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		err := handler.Run(ctx)
 		require.NoError(t, err)
 
-		defer func(){
+		defer func() {
 			cancel()
 			r.Equal(3, mothershipCalls)
 		}()
 	})
+}
+
+type mockInterruptChecker struct {
+	interrupted bool
+}
+
+func (m *mockInterruptChecker) Check(ctx context.Context) (bool, error) {
+	return m.interrupted, nil
 }
