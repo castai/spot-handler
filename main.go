@@ -12,10 +12,10 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
+	"github.com/castai/azure-spot-handler/castai"
+	"github.com/castai/azure-spot-handler/config"
 	"github.com/castai/azure-spot-handler/handler"
-	"github.com/castai/azure-spot-handler/internal/castai"
-	"github.com/castai/azure-spot-handler/internal/config"
-	"github.com/castai/azure-spot-handler/internal/version"
+	"github.com/castai/azure-spot-handler/version"
 )
 
 var (
@@ -29,10 +29,6 @@ func main() {
 
 	logger := logrus.New()
 	log := logrus.WithFields(logrus.Fields{})
-
-	// Set 5 seconds until we timeout calling mothership and retry.
-	castHttpClient := castai.NewDefaultClient(cfg.APIUrl, cfg.APIKey, logrus.Level(cfg.LogLevel), 5*time.Second)
-	castClient := castai.NewClient(logger, castHttpClient, cfg.ClusterID)
 
 	kubeconfig, err := retrieveKubeConfig(log)
 	if err != nil {
@@ -64,6 +60,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("interrupt checker: %v", err)
 	}
+
+	// Set 5 seconds until we timeout calling mothership and retry.
+	castHttpClient := castai.NewDefaultClient(
+		cfg.APIUrl,
+		cfg.APIKey,
+		logrus.Level(cfg.LogLevel),
+		5*time.Second,
+		Version,
+	)
+	castClient := castai.NewClient(logger, castHttpClient, cfg.ClusterID)
 
 	spotHandler := handler.NewSpotHandler(
 		log,

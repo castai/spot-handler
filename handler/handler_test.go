@@ -11,12 +11,12 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/castai/azure-spot-handler/internal/castai"
-
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+
+	"github.com/castai/azure-spot-handler/castai"
 )
 
 func TestRunLoop(t *testing.T) {
@@ -51,7 +51,7 @@ func TestRunLoop(t *testing.T) {
 		defer castS.Close()
 
 		fakeApi := fake.NewSimpleClientset(node)
-		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 100*time.Millisecond)
+		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 100*time.Millisecond, "0.0.0")
 		mockCastClient := castai.NewClient(log, castHttp, "test1")
 
 		mockInterrupt := &mockInterruptChecker{interrupted: true}
@@ -101,7 +101,7 @@ func TestRunLoop(t *testing.T) {
 		defer castS.Close()
 
 		fakeApi := fake.NewSimpleClientset(node)
-		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, time.Millisecond*100)
+		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, time.Millisecond*100, "0.0.0")
 		mockCastClient := castai.NewClient(log, castHttp, "test1")
 
 		mockInterrupt := &mockInterruptChecker{interrupted: true}

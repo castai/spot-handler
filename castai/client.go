@@ -3,13 +3,17 @@ package castai
 import (
 	"context"
 	"fmt"
-	"github.com/go-resty/resty/v2"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
+
+	"github.com/go-resty/resty/v2"
+	"github.com/sirupsen/logrus"
 )
 
-const headerAPIKey = "X-API-Key"
+const (
+	headerAPIKey    = "X-API-Key"
+	headerUserAgent = "User-Agent"
+)
 
 type Client interface {
 	SendCloudEvent(ctx context.Context, req *CloudEventRequest) error
@@ -24,11 +28,12 @@ func NewClient(log *logrus.Logger, rest *resty.Client, clusterID string) Client 
 }
 
 // NewDefaultClient configures a default instance of the resty.Client used to do HTTP requests.
-func NewDefaultClient(url, key string, level logrus.Level, timeout time.Duration) *resty.Client {
+func NewDefaultClient(url, key string, level logrus.Level, timeout time.Duration, version string) *resty.Client {
 	client := resty.New()
 	client.SetHostURL(url)
 	client.SetTimeout(timeout)
 	client.Header.Set(http.CanonicalHeaderKey(headerAPIKey), key)
+	client.Header.Set(http.CanonicalHeaderKey(headerUserAgent), "castai-spot-handler/"+version)
 	if level == logrus.TraceLevel {
 		client.SetDebug(true)
 	}
