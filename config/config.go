@@ -11,6 +11,7 @@ type Config struct {
 	APIUrl              string
 	APIKey              string
 	ClusterID           string
+	Provider            string
 	LogLevel            int
 	PprofPort           int
 	PollIntervalSeconds int
@@ -30,6 +31,7 @@ func Get() Config {
 	_ = viper.BindEnv("apiurl", "API_URL")
 	_ = viper.BindEnv("nodename", "NODE_NAME")
 	_ = viper.BindEnv("clusterid", "CLUSTER_ID")
+	_ = viper.BindEnv("provider", "PROVIDER")
 
 	_ = viper.BindEnv("pollintervalseconds", "POLL_INTERVAL_SECONDS")
 	_ = viper.BindEnv("pprofport", "PPROF_PORT")
@@ -50,6 +52,9 @@ func Get() Config {
 	}
 	if cfg.NodeName == "" {
 		required("NODE_NAME")
+	}
+	if cfg.Provider == "" {
+		required("PROVIDER")
 	}
 
 	return *cfg

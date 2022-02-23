@@ -12,10 +12,10 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
+	"github.com/castai/azure-spot-handler/castai"
+	"github.com/castai/azure-spot-handler/config"
 	"github.com/castai/azure-spot-handler/handler"
-	"github.com/castai/azure-spot-handler/internal/castai"
-	"github.com/castai/azure-spot-handler/internal/config"
-	"github.com/castai/azure-spot-handler/internal/version"
+	"github.com/castai/azure-spot-handler/version"
 )
 
 var (
@@ -24,19 +24,11 @@ var (
 	Version   = "local"
 )
 
-// https://docs.microsoft.com/en-us/azure/virtual-machines/linux/scheduled-events#endpoint-discovery
-const azureScheduledEventsBackend = "http://169.254.169.254"
-
 func main() {
 	cfg := config.Get()
 
 	logger := logrus.New()
 	log := logrus.WithFields(logrus.Fields{})
-	httpClient := handler.NewDefaultClient(azureScheduledEventsBackend)
-
-	// 5 seconds until we timeout calling mothership and retry
-	castHttpClient := castai.NewDefaultClient(cfg.APIUrl, cfg.APIKey, logrus.Level(cfg.LogLevel), 5 * time.Second)
-	castClient := castai.NewClient(logger, castHttpClient, cfg.ClusterID)
 
 	kubeconfig, err := retrieveKubeConfig(log)
 	if err != nil {
@@ -64,7 +56,29 @@ func main() {
 		"k8s_version": k8sVersion.Full(),
 	})
 
-	spotHandler := handler.NewHandler(log, httpClient, castClient, clientset, time.Duration(cfg.PollIntervalSeconds) * time.Second, cfg.NodeName)
+	interruptChecker, err := buildInterruptChecker(cfg.Provider)
+	if err != nil {
+		log.Fatalf("interrupt checker: %v", err)
+	}
+
+	// Set 5 seconds until we timeout calling mothership and retry.
+	castHttpClient := castai.NewDefaultClient(
+		cfg.APIUrl,
+		cfg.APIKey,
+		logrus.Level(cfg.LogLevel),
+		5*time.Second,
+		Version,
+	)
+	castClient := castai.NewClient(logger, castHttpClient, cfg.ClusterID)
+
+	spotHandler := handler.NewSpotHandler(
+		log,
+		castClient,
+		clientset,
+		interruptChecker,
+		time.Duration(cfg.PollIntervalSeconds)*time.Second,
+		cfg.NodeName,
+	)
 
 	if cfg.PprofPort != 0 {
 		go func() {
@@ -76,12 +90,24 @@ func main() {
 		}()
 	}
 
+	log.Infof("running spot handler, provider=%s", cfg.Provider)
 	if err := spotHandler.Run(signals.SetupSignalHandler()); err != nil {
 		logErr := &logContextErr{}
 		if errors.As(err, &logErr) {
 			log = logger.WithFields(logErr.fields)
 		}
-		log.Fatalf("azure-spot-handler failed: %v", err)
+		log.Fatalf("spot handler failed: %v", err)
+	}
+}
+
+func buildInterruptChecker(provider string) (handler.InterruptChecker, error) {
+	switch provider {
+	case "azure":
+		return handler.NewAzureInterruptChecker(), nil
+	case "gcp":
+		return handler.NewGCPChecker(), nil
+	default:
+		return nil, fmt.Errorf("unknown provider: %s", provider)
 	}
 }
 

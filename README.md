@@ -1,6 +1,6 @@
-# CAST AI Azure spot handler
+# CAST AI Spot handler
 
-CAST AI Azure spot handler daemon, used for Azure scheduled events monitoring.
+CAST AI spot handler daemon, used for spot instances scheduled events monitoring.
 
 ## Installation
 
