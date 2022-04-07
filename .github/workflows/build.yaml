@@ -72,7 +72,7 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ghcr.io/castai/spot-handler:${{ github.sha }}
+          tags: us-docker.pkg.dev/castai-hub/library/spot-handler:${{ github.sha }}
 
       - name: Build and push release
         if: github.event_name == 'release'
@@ -81,5 +81,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/castai/spot-handler:${{ env.RELEASE_TAG }}
-            ghcr.io/castai/spot-handler:latest
+            us-docker.pkg.dev/castai-hub/library/spot-handler:${{ env.RELEASE_TAG }}
+            us-docker.pkg.dev/castai-hub/library/spot-handler:latest
