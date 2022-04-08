@@ -52,12 +52,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Login to GitHub Container Registry
+      - name: Login to Google Artifact Registry
         uses: docker/login-action@v1
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: us-docker.pkg.dev
+          username: _json_key
+          password: ${{ secrets.ARTIFACT_BUILDER_JSON_KEY }}
 
       - name: Build and push master
         if: github.event_name != 'release'
@@ -65,7 +65,7 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ghcr.io/castai/spot-handler:${{ github.sha }}
+          tags: us-docker.pkg.dev/castai-hub/library/spot-handler:${{ github.sha }}
 
       - name: Build and push release
         if: github.event_name == 'release'
@@ -74,5 +74,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/castai/spot-handler:${{ env.RELEASE_TAG }}
-            ghcr.io/castai/spot-handler:latest
+            us-docker.pkg.dev/castai-hub/library/spot-handler:${{ env.RELEASE_TAG }}
+            us-docker.pkg.dev/castai-hub/library/spot-handler:latest
