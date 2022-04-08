@@ -16,7 +16,7 @@ func NewGCPChecker() InterruptChecker {
 
 	return &gcpInterruptChecker{
 		client:            client,
-		metadataServerURL: "http://metadata.google.internal",
+		metadataServerURL: "http://169.254.169.254",
 	}
 }
 
