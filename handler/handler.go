@@ -57,7 +57,7 @@ func (g *SpotHandler) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-t.C:
-			// check interruption
+			// Check interruption.
 			err := func() error {
 				interrupted, err := g.interruptChecker.Check(ctx)
 				if err != nil {
@@ -65,11 +65,10 @@ func (g *SpotHandler) Run(ctx context.Context) error {
 				}
 				if interrupted {
 					g.log.Infof("preemption notice received")
-					err := g.handleInterruption(ctx)
-					if err != nil {
+					if err := g.handleInterruption(ctx); err != nil {
 						return err
 					}
-					// stop after ACK
+					// Stop after ACK.
 					t.Stop()
 				}
 				return nil
@@ -94,9 +93,7 @@ func (g *SpotHandler) handleInterruption(ctx context.Context) error {
 		EventType: "interrupted",
 		NodeID:    node.Labels[CastNodeIDLabel],
 	}
-
-	err = g.castClient.SendCloudEvent(ctx, req)
-	if err != nil {
+	if err = g.castClient.SendCloudEvent(ctx, req); err != nil {
 		return err
 	}
 

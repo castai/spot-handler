@@ -4,25 +4,33 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 
-	"github.com/go-resty/resty/v2"
+	"cloud.google.com/go/compute/metadata"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGCPInterruptChecker(t *testing.T) {
-	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/computeMetadata/v1/instance/preempted", r.URL.String())
-
-		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte("TRUE"))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/computeMetadata/v1/instance/maintenance-event", func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusOK)
+		_, err := res.Write([]byte("NO_MAINTENANCE"))
 		require.NoError(t, err)
-	}))
+	})
+	mux.HandleFunc("/computeMetadata/v1/instance/preempted", func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusOK)
+		_, err := res.Write([]byte("TRUE"))
+		require.NoError(t, err)
+	})
+
+	s := httptest.NewServer(mux)
 	defer s.Close()
 
+	os.Setenv("GCE_METADATA_HOST", strings.TrimPrefix(s.URL, "http://"))
 	checker := gcpInterruptChecker{
-		client:            resty.New(),
-		metadataServerURL: s.URL,
+		metadata: metadata.NewClient(nil),
 	}
 
 	interrupted, err := checker.Check(context.Background())

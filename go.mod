@@ -3,6 +3,7 @@ module github.com/castai/azure-spot-handler
 go 1.17
 
 require (
+	cloud.google.com/go v0.54.0
 	github.com/cenkalti/backoff/v4 v4.1.1
 	github.com/go-resty/resty/v2 v2.5.0
 	github.com/sirupsen/logrus v1.8.1
