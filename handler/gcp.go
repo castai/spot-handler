@@ -14,6 +14,10 @@ const (
 	preemptionSuffix  = "instance/preempted"
 )
 
+type metadataGetter interface {
+	Get(path string) (string, error)
+}
+
 // NewGCPChecker checks for gcp spot interrupt event from metadata server.
 func NewGCPChecker() InterruptChecker {
 	return &gcpInterruptChecker{
@@ -22,7 +26,7 @@ func NewGCPChecker() InterruptChecker {
 }
 
 type gcpInterruptChecker struct {
-	metadata *metadata.Client
+	metadata metadataGetter
 }
 
 func (c *gcpInterruptChecker) Check(ctx context.Context) (bool, error) {
