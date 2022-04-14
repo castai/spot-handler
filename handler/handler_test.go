@@ -75,6 +75,43 @@ func TestRunLoop(t *testing.T) {
 		r.Equal(true, node.Spec.Unschedulable)
 	})
 
+	t.Run("keep checking interruption on context canceled", func(t *testing.T) {
+		mothershipCalls := 0
+		castS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, re *http.Request) {
+			mothershipCalls++
+			var req castai.CloudEventRequest
+			r.NoError(json.NewDecoder(re.Body).Decode(&req))
+			r.Equal(req.NodeID, castNodeID)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer castS.Close()
+
+		fakeApi := fake.NewSimpleClientset(node)
+		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 100*time.Millisecond, "0.0.0")
+		mockCastClient := castai.NewClient(log, castHttp, "test1")
+
+		mockInterrupt := &mockInterruptChecker{interrupted: true}
+		handler := SpotHandler{
+			pollWaitInterval: 1 * time.Second,
+			interruptChecker: mockInterrupt,
+			castClient:       mockCastClient,
+			nodeName:         nodeName,
+			clientset:        fakeApi,
+			log:              log,
+			gracePeriod:      2 * time.Second,
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+
+		err := handler.Run(ctx)
+		require.NoError(t, err)
+		r.Equal(1, mothershipCalls)
+
+		node, _ = fakeApi.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+		r.Equal(true, node.Spec.Unschedulable)
+	})
+
 	t.Run("handle mock interruption retries", func(t *testing.T) {
 		m := sync.Mutex{}
 

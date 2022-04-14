@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -30,6 +31,7 @@ type SpotHandler struct {
 	nodeName         string
 	pollWaitInterval time.Duration
 	log              logrus.FieldLogger
+	gracePeriod      time.Duration
 }
 
 func NewSpotHandler(
@@ -47,6 +49,7 @@ func NewSpotHandler(
 		log:              log,
 		nodeName:         nodeName,
 		pollWaitInterval: pollWaitInterval,
+		gracePeriod:      30 * time.Second,
 	}
 }
 
@@ -54,11 +57,17 @@ func (g *SpotHandler) Run(ctx context.Context) error {
 	t := time.NewTicker(g.pollWaitInterval)
 	defer t.Stop()
 
+	var once sync.Once
+	deadline := time.NewTimer(24 * 365 * time.Hour)
+
 	for {
 		select {
 		case <-t.C:
 			// Check interruption.
 			err := func() error {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+
 				interrupted, err := g.interruptChecker.Check(ctx)
 				if err != nil {
 					return err
@@ -77,8 +86,13 @@ func (g *SpotHandler) Run(ctx context.Context) error {
 			if err != nil {
 				g.log.Errorf("checking for interruption: %v", err)
 			}
-		case <-ctx.Done():
+		case <-deadline.C:
 			return nil
+		case <-ctx.Done():
+			// Signal received, starting countdown until exiting the loop.
+			once.Do(func() {
+				deadline.Reset(g.gracePeriod)
+			})
 		}
 	}
 }
