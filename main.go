@@ -106,6 +106,8 @@ func buildInterruptChecker(provider string) (handler.InterruptChecker, error) {
 		return handler.NewAzureInterruptChecker(), nil
 	case "gcp":
 		return handler.NewGCPChecker(), nil
+	case "aws":
+		return handler.NewAWSInterruptChecker(), nil
 	default:
 		return nil, fmt.Errorf("unknown provider: %s", provider)
 	}
