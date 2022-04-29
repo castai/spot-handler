@@ -1,5 +1,5 @@
 # CAST AI Spot handler
-
+# build me
 CAST AI spot handler daemon, used for spot instances scheduled events monitoring.
 
 ## Installation
