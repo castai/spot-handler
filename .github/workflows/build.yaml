@@ -36,11 +36,18 @@ jobs:
         if: github.event_name == 'release'
         run: echo "RELEASE_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
-      - name: Build Go binary
-        run: go build -ldflags "-s -w -X main.GitCommit=$GITHUB_SHA -X main.GitRef=$GITHUB_REF -X main.Version=${RELEASE_TAG:-commit-$GITHUB_SHA}" -o bin/spot-handler .
+      - name: Build Go binary AMD64
+        run: go build -ldflags "-s -w -X main.GitCommit=$GITHUB_SHA -X main.GitRef=$GITHUB_REF -X main.Version=${RELEASE_TAG:-commit-$GITHUB_SHA}" -o bin/spot-handler-amd64 .
         env:
           GOOS: linux
           GOARCH: amd64
+          CGO_ENABLED: 0
+
+      - name: Build Go binary ARM64
+        run: go build -ldflags "-s -w -X main.GitCommit=$GITHUB_SHA -X main.GitRef=$GITHUB_REF -X main.Version=${RELEASE_TAG:-commit-$GITHUB_SHA}" -o bin/spot-handler-arm64 .
+        env:
+          GOOS: linux
+          GOARCH: arm64
           CGO_ENABLED: 0
 
       - name: Test
@@ -72,6 +79,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
+          platforms: linux/arm64,linux/amd64
           push: true
           tags: |
             us-docker.pkg.dev/castai-hub/library/spot-handler:${{ env.RELEASE_TAG }}
