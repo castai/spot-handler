@@ -1,3 +1,4 @@
 FROM alpine:3.13
-COPY bin/spot-handler /usr/local/bin/spot-handler
+ARG TARGETARCH amd64
+COPY bin/spot-handler-$TARGETARCH /usr/local/bin/spot-handler
 CMD ["spot-handler"]
