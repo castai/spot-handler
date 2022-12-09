@@ -3,7 +3,6 @@ package castai
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -32,8 +31,8 @@ func NewDefaultClient(url, key string, level logrus.Level, timeout time.Duration
 	client := resty.New()
 	client.SetHostURL(url)
 	client.SetTimeout(timeout)
-	client.Header.Set(http.CanonicalHeaderKey(headerAPIKey), key)
-	client.Header.Set(http.CanonicalHeaderKey(headerUserAgent), "castai-spot-handler/"+version)
+	client.Header.Set(headerAPIKey, key)
+	client.Header.Set(headerUserAgent, "castai-spot-handler/"+version)
 	if level == logrus.TraceLevel {
 		client.SetDebug(true)
 	}
@@ -45,7 +44,6 @@ type client struct {
 	log       *logrus.Logger
 	rest      *resty.Client
 	clusterID string
-	nodeID    string
 }
 
 type CloudEventRequest struct {
