@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 
-	"github.com/castai/azure-spot-handler/castai"
+	"github.com/castai/spot-handler/castai"
 )
 
 func TestRunLoop(t *testing.T) {
