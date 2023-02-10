@@ -1,4 +1,4 @@
-module github.com/castai/azure-spot-handler
+module github.com/castai/spot-handler
 
 go 1.19
 
