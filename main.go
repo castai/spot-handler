@@ -12,10 +12,10 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	"github.com/castai/azure-spot-handler/castai"
-	"github.com/castai/azure-spot-handler/config"
-	"github.com/castai/azure-spot-handler/handler"
-	"github.com/castai/azure-spot-handler/version"
+	"github.com/castai/spot-handler/castai"
+	"github.com/castai/spot-handler/config"
+	"github.com/castai/spot-handler/handler"
+	"github.com/castai/spot-handler/version"
 )
 
 var (
