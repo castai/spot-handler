@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/castai/azure-spot-handler/castai"
+	"github.com/castai/spot-handler/castai"
 )
 
 const CastNodeIDLabel = "provisioner.cast.ai/node-id"
