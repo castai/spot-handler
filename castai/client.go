@@ -29,7 +29,7 @@ func NewClient(log *logrus.Logger, rest *resty.Client, clusterID string) Client 
 // NewDefaultClient configures a default instance of the resty.Client used to do HTTP requests.
 func NewDefaultClient(url, key string, level logrus.Level, timeout time.Duration, version string) *resty.Client {
 	client := resty.New()
-	client.SetHostURL(url)
+	client.SetBaseURL(url)
 	client.SetTimeout(timeout)
 	client.Header.Set(headerAPIKey, key)
 	client.Header.Set(headerUserAgent, "castai-spot-handler/"+version)
