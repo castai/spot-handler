@@ -161,7 +161,7 @@ func TestRunLoop(t *testing.T) {
 		}()
 	})
 
-	t.Run("handle successful mock rebalabnce recommendation", func(t *testing.T) {
+	t.Run("handle successful mock rebalance recommendation", func(t *testing.T) {
 		mothershipCalls := 0
 		castS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, re *http.Request) {
 			mothershipCalls++
