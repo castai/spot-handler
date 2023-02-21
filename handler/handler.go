@@ -71,7 +71,6 @@ func (g *SpotHandler) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-t.C:
-			// CheckInterrupt interruption.
 			err := func() error {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
