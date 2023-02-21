@@ -20,14 +20,20 @@ import (
 
 const CastNodeIDLabel = "provisioner.cast.ai/node-id"
 
-type InterruptChecker interface {
-	Check(ctx context.Context) (bool, error)
+const (
+	cloudEventInterrupted             = "interrupted"
+	cloudEventRebalanceRecommendation = "rebalanceRecommendation"
+)
+
+type MetadataChecker interface {
+	CheckInterrupt(ctx context.Context) (bool, error)
+	CheckRebalanceRecommendation(ctx context.Context) (bool, error)
 }
 
 type SpotHandler struct {
 	castClient       castai.Client
 	clientset        kubernetes.Interface
-	interruptChecker InterruptChecker
+	metadataChecker  MetadataChecker
 	nodeName         string
 	pollWaitInterval time.Duration
 	log              logrus.FieldLogger
@@ -38,14 +44,14 @@ func NewSpotHandler(
 	log logrus.FieldLogger,
 	castClient castai.Client,
 	clientset kubernetes.Interface,
-	interruptChecker InterruptChecker,
+	metadataChecker MetadataChecker,
 	pollWaitInterval time.Duration,
 	nodeName string,
 ) *SpotHandler {
 	return &SpotHandler{
 		castClient:       castClient,
 		clientset:        clientset,
-		interruptChecker: interruptChecker,
+		metadataChecker:  metadataChecker,
 		log:              log,
 		nodeName:         nodeName,
 		pollWaitInterval: pollWaitInterval,
@@ -60,15 +66,17 @@ func (g *SpotHandler) Run(ctx context.Context) error {
 	var once sync.Once
 	deadline := time.NewTimer(24 * 365 * time.Hour)
 
+	var rebalanceRecommendationSent bool
+
 	for {
 		select {
 		case <-t.C:
-			// Check interruption.
+			// CheckInterrupt interruption.
 			err := func() error {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
 
-				interrupted, err := g.interruptChecker.Check(ctx)
+				interrupted, err := g.metadataChecker.CheckInterrupt(ctx)
 				if err != nil {
 					return err
 				}
@@ -80,11 +88,26 @@ func (g *SpotHandler) Run(ctx context.Context) error {
 					// Stop after ACK.
 					t.Stop()
 				}
+
+				if !rebalanceRecommendationSent {
+					rebalanceRecommendation, err := g.metadataChecker.CheckRebalanceRecommendation(ctx)
+					if err != nil {
+						return err
+					}
+					if rebalanceRecommendation {
+						g.log.Infof("rebalance recommendation notice received")
+						if err := g.handleRebalanceRecommendation(ctx); err != nil {
+							return err
+						}
+						rebalanceRecommendationSent = true
+					}
+				}
+
 				return nil
 			}()
 
 			if err != nil {
-				g.log.Errorf("checking for interruption: %v", err)
+				g.log.Errorf("checking for cloud events: %v", err)
 			}
 		case <-deadline.C:
 			return nil
@@ -104,7 +127,7 @@ func (g *SpotHandler) handleInterruption(ctx context.Context) error {
 	}
 
 	req := &castai.CloudEventRequest{
-		EventType: "interrupted",
+		EventType: cloudEventInterrupted,
 		NodeID:    node.Labels[CastNodeIDLabel],
 	}
 	if err = g.castClient.SendCloudEvent(ctx, req); err != nil {
@@ -162,4 +185,18 @@ func (g *SpotHandler) patchNode(ctx context.Context, node *v1.Node, changeFn fun
 
 func defaultBackoff(ctx context.Context) backoff.BackOffContext {
 	return backoff.WithContext(backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 5), ctx)
+}
+
+func (g *SpotHandler) handleRebalanceRecommendation(ctx context.Context) error {
+	node, err := g.clientset.CoreV1().Nodes().Get(ctx, g.nodeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	req := &castai.CloudEventRequest{
+		EventType: cloudEventRebalanceRecommendation,
+		NodeID:    node.Labels[CastNodeIDLabel],
+	}
+
+	return g.castClient.SendCloudEvent(ctx, req)
 }

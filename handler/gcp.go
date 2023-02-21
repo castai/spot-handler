@@ -19,7 +19,7 @@ type metadataGetter interface {
 }
 
 // NewGCPChecker checks for gcp spot interrupt event from metadata server.
-func NewGCPChecker() InterruptChecker {
+func NewGCPChecker() MetadataChecker {
 	return &gcpInterruptChecker{
 		metadata: metadata.NewClient(nil),
 	}
@@ -29,7 +29,7 @@ type gcpInterruptChecker struct {
 	metadata metadataGetter
 }
 
-func (c *gcpInterruptChecker) Check(ctx context.Context) (bool, error) {
+func (c *gcpInterruptChecker) CheckInterrupt(ctx context.Context) (bool, error) {
 	m, err := c.metadata.Get(maintenanceSuffix)
 	if err != nil {
 		return false, err
@@ -40,4 +40,9 @@ func (c *gcpInterruptChecker) Check(ctx context.Context) (bool, error) {
 	}
 
 	return m == maintenanceEventTerminate || p == preemptionEventTrue, nil
+}
+
+func (c *gcpInterruptChecker) CheckRebalanceRecommendation(ctx context.Context) (bool, error) {
+	// Applicable only for AWS for now.
+	return false, nil
 }

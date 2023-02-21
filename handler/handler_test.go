@@ -57,7 +57,7 @@ func TestRunLoop(t *testing.T) {
 		mockInterrupt := &mockInterruptChecker{interrupted: true}
 		handler := SpotHandler{
 			pollWaitInterval: 100 * time.Millisecond,
-			interruptChecker: mockInterrupt,
+			metadataChecker:  mockInterrupt,
 			castClient:       mockCastClient,
 			nodeName:         nodeName,
 			clientset:        fakeApi,
@@ -93,7 +93,7 @@ func TestRunLoop(t *testing.T) {
 		mockInterrupt := &mockInterruptChecker{interrupted: true}
 		handler := SpotHandler{
 			pollWaitInterval: 1 * time.Second,
-			interruptChecker: mockInterrupt,
+			metadataChecker:  mockInterrupt,
 			castClient:       mockCastClient,
 			nodeName:         nodeName,
 			clientset:        fakeApi,
@@ -144,7 +144,7 @@ func TestRunLoop(t *testing.T) {
 		mockInterrupt := &mockInterruptChecker{interrupted: true}
 		handler := SpotHandler{
 			pollWaitInterval: time.Millisecond * 100,
-			interruptChecker: mockInterrupt,
+			metadataChecker:  mockInterrupt,
 			castClient:       mockCastClient,
 			nodeName:         nodeName,
 			clientset:        fakeApi,
@@ -160,12 +160,50 @@ func TestRunLoop(t *testing.T) {
 			r.Equal(3, mothershipCalls)
 		}()
 	})
+
+	t.Run("handle successful mock rebalabnce recommendation", func(t *testing.T) {
+		mothershipCalls := 0
+		castS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, re *http.Request) {
+			mothershipCalls++
+			var req castai.CloudEventRequest
+			r.NoError(json.NewDecoder(re.Body).Decode(&req))
+			r.Equal(req.NodeID, castNodeID)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer castS.Close()
+
+		fakeApi := fake.NewSimpleClientset(node)
+		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 100*time.Millisecond, "0.0.0")
+		mockCastClient := castai.NewClient(log, castHttp, "test1")
+
+		mockRecommendation := &mockInterruptChecker{rebalanceRecommendation: true}
+		handler := SpotHandler{
+			pollWaitInterval: 100 * time.Millisecond,
+			metadataChecker:  mockRecommendation,
+			castClient:       mockCastClient,
+			nodeName:         nodeName,
+			clientset:        fakeApi,
+			log:              log,
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		err := handler.Run(ctx)
+		require.NoError(t, err)
+		r.Equal(1, mothershipCalls)
+	})
 }
 
 type mockInterruptChecker struct {
-	interrupted bool
+	interrupted             bool
+	rebalanceRecommendation bool
 }
 
-func (m *mockInterruptChecker) Check(ctx context.Context) (bool, error) {
+func (m *mockInterruptChecker) CheckInterrupt(ctx context.Context) (bool, error) {
 	return m.interrupted, nil
+}
+
+func (m *mockInterruptChecker) CheckRebalanceRecommendation(ctx context.Context) (bool, error) {
+	return m.rebalanceRecommendation, nil
 }
