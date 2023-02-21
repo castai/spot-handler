@@ -66,6 +66,7 @@ func (g *SpotHandler) Run(ctx context.Context) error {
 	var once sync.Once
 	deadline := time.NewTimer(24 * 365 * time.Hour)
 
+	// Once rebalance recommendation is set by cloud it stays there permanently. It needs to be sent only once.
 	var rebalanceRecommendationSent bool
 
 	for {
