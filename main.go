@@ -100,7 +100,7 @@ func main() {
 	}
 }
 
-func buildInterruptChecker(provider string) (handler.InterruptChecker, error) {
+func buildInterruptChecker(provider string) (handler.MetadataChecker, error) {
 	switch provider {
 	case "azure":
 		return handler.NewAzureInterruptChecker(), nil

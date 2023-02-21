@@ -40,7 +40,7 @@ func TestAwsInterruptChecker(t *testing.T) {
 		imds: ec2metadata.New(s.URL, 3),
 	}
 
-	interrupted, err := checker.Check(context.Background())
+	interrupted, err := checker.CheckInterrupt(context.Background())
 	require.NoError(t, err)
 	require.True(t, interrupted)
 }

@@ -10,7 +10,7 @@ import (
 
 // NewAzureInterruptChecker checks for azure spot interrupt event from metadata server.
 // See https://docs.microsoft.com/en-us/azure/virtual-machines/linux/scheduled-events#endpoint-discovery
-func NewAzureInterruptChecker() InterruptChecker {
+func NewAzureInterruptChecker() MetadataChecker {
 	client := resty.New()
 	// Times out if set to 1 second, after 2 we will try again soon anyway
 	client.SetTimeout(time.Second * 2)
@@ -26,7 +26,14 @@ type azureInterruptChecker struct {
 	metadataServerURL string
 }
 
-func (c *azureInterruptChecker) Check(ctx context.Context) (bool, error) {
+type azureSpotScheduledEvent struct {
+	EventType string
+}
+type azureSpotScheduledEvents struct {
+	Events []azureSpotScheduledEvent
+}
+
+func (c *azureInterruptChecker) CheckInterrupt(ctx context.Context) (bool, error) {
 	responseBody := azureSpotScheduledEvents{}
 
 	req := c.client.NewRequest().SetContext(ctx).SetResult(&responseBody)
@@ -49,9 +56,7 @@ func (c *azureInterruptChecker) Check(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
-type azureSpotScheduledEvent struct {
-	EventType string
-}
-type azureSpotScheduledEvents struct {
-	Events []azureSpotScheduledEvent
+func (c *azureInterruptChecker) CheckRebalanceRecommendation(ctx context.Context) (bool, error) {
+	// Applicable only for AWS for now.
+	return false, nil
 }
