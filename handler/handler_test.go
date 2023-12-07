@@ -73,6 +73,12 @@ func TestRunLoop(t *testing.T) {
 
 		node, _ = fakeApi.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
 		r.Equal(true, node.Spec.Unschedulable)
+		r.Equal(valueNodeDrainingReasonInterrupted, node.Labels[labelNodeDraining])
+		r.Contains(node.Spec.Taints, v1.Taint{
+			Key:    taintNodeDraining,
+			Value:  valueTrue,
+			Effect: taintNodeDrainingEffect,
+		})
 	})
 
 	t.Run("keep checking interruption on context canceled", func(t *testing.T) {
@@ -110,6 +116,12 @@ func TestRunLoop(t *testing.T) {
 
 		node, _ = fakeApi.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
 		r.Equal(true, node.Spec.Unschedulable)
+		r.Equal(valueNodeDrainingReasonInterrupted, node.Labels[labelNodeDraining])
+		r.Contains(node.Spec.Taints, v1.Taint{
+			Key:    taintNodeDraining,
+			Value:  valueTrue,
+			Effect: taintNodeDrainingEffect,
+		})
 	})
 
 	t.Run("handle mock interruption retries", func(t *testing.T) {
