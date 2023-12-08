@@ -25,7 +25,7 @@ const (
 	taintNodeDrainingEffect = "NoSchedule"
 
 	labelNodeDraining                  = "autoscaling.cast.ai/draining"
-	valueNodeDrainingReasonInterrupted = "spot-interuption"
+	valueNodeDrainingReasonInterrupted = "spot-interruption"
 
 	cloudEventInterrupted              = "interrupted"
 	cloudEventRebalanceRecommendation  = "rebalanceRecommendation"
