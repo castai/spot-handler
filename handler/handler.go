@@ -21,7 +21,7 @@ import (
 const CastNodeIDLabel = "provisioner.cast.ai/node-id"
 
 const (
-	taintNodeDraining = "autoscaling.cast.ai/evicting"
+	taintNodeDraining = "autoscaling.cast.ai/draining"
 	taintNodeDrainingEffect = "NoSchedule"
 
 	labelNodeDraining                  = "autoscaling.cast.ai/draining"
