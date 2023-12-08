@@ -21,8 +21,16 @@ import (
 const CastNodeIDLabel = "provisioner.cast.ai/node-id"
 
 const (
-	cloudEventInterrupted             = "interrupted"
-	cloudEventRebalanceRecommendation = "rebalanceRecommendation"
+	taintNodeDraining = "autoscaling.cast.ai/draining"
+	taintNodeDrainingEffect = "NoSchedule"
+
+	labelNodeDraining                  = "autoscaling.cast.ai/draining"
+	valueNodeDrainingReasonInterrupted = "spot-interruption"
+
+	cloudEventInterrupted              = "interrupted"
+	cloudEventRebalanceRecommendation  = "rebalanceRecommendation"
+
+	valueTrue = "true"
 )
 
 type MetadataChecker interface {
@@ -144,6 +152,12 @@ func (g *SpotHandler) taintNode(ctx context.Context, node *v1.Node) error {
 
 	err := g.patchNode(ctx, node, func(n *v1.Node) error {
 		n.Spec.Unschedulable = true
+		n.Labels[labelNodeDraining] = valueNodeDrainingReasonInterrupted
+		n.Spec.Taints = append(n.Spec.Taints, v1.Taint{
+			Key:    taintNodeDraining,
+			Value:  valueTrue,
+			Effect: taintNodeDrainingEffect,
+		})
 		return nil
 	})
 	if err != nil {
