@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/cenkalti/backoff/v4"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
 )
@@ -15,13 +17,22 @@ type Interface interface {
 	MinorInt() int
 }
 
-func Get(clientset kubernetes.Interface) (Interface, error) {
+func Get(log *logrus.Entry, clientset kubernetes.Interface) (Interface, error) {
 	cs, ok := clientset.(*kubernetes.Clientset)
 	if !ok {
 		return nil, fmt.Errorf("expected clientset to be of type *kubernetes.Clientset but was %T", clientset)
 	}
 
-	sv, err := cs.ServerVersion()
+	var sv *version.Info
+	err := backoff.Retry(func() error {
+		var err error
+		sv, err = cs.ServerVersion()
+		if err != nil {
+			log.Warnf("failed getting server version, retrying: %v", err)
+			return err
+		}
+		return nil
+	}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 5))
 	if err != nil {
 		return nil, fmt.Errorf("getting server version: %w", err)
 	}
@@ -54,4 +65,3 @@ type HandlerVersion struct {
 func (a *HandlerVersion) String() string {
 	return fmt.Sprintf("GitCommit=%q GitRef=%q Version=%q", a.GitCommit, a.GitRef, a.Version)
 }
-

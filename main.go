@@ -40,7 +40,7 @@ func main() {
 		log.Fatalf("err creating clientset: %v", err)
 	}
 
-	k8sVersion, err := version.Get(clientset)
+	k8sVersion, err := version.Get(log, clientset)
 	if err != nil {
 		log.Fatalf("failed getting kubernetes version: %v", err)
 	}
