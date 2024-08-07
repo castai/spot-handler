@@ -51,7 +51,8 @@ func TestRunLoop(t *testing.T) {
 		defer castS.Close()
 
 		fakeApi := fake.NewSimpleClientset(node)
-		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 100*time.Millisecond, "0.0.0")
+		castHttp, err := castai.NewRestyClient(castS.URL, "test", "", log.Level, 100*time.Millisecond, "0.0.0")
+		r.NoError(err)
 		mockCastClient := castai.NewClient(log, castHttp, "test1")
 
 		mockInterrupt := &mockInterruptChecker{interrupted: true}
@@ -67,7 +68,7 @@ func TestRunLoop(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		err := handler.Run(ctx)
+		err = handler.Run(ctx)
 		require.NoError(t, err)
 		r.Equal(1, mothershipCalls)
 
@@ -93,7 +94,8 @@ func TestRunLoop(t *testing.T) {
 		defer castS.Close()
 
 		fakeApi := fake.NewSimpleClientset(node)
-		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 100*time.Millisecond, "0.0.0")
+		castHttp, err := castai.NewRestyClient(castS.URL, "test", "", log.Level, 100*time.Millisecond, "0.0.0")
+		r.NoError(err)
 		mockCastClient := castai.NewClient(log, castHttp, "test1")
 
 		mockInterrupt := &mockInterruptChecker{interrupted: true}
@@ -110,7 +112,7 @@ func TestRunLoop(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 		defer cancel()
 
-		err := handler.Run(ctx)
+		err = handler.Run(ctx)
 		require.NoError(t, err)
 		r.Equal(1, mothershipCalls)
 
@@ -150,7 +152,8 @@ func TestRunLoop(t *testing.T) {
 		defer castS.Close()
 
 		fakeApi := fake.NewSimpleClientset(node)
-		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, time.Millisecond*100, "0.0.0")
+		castHttp, err := castai.NewRestyClient(castS.URL, "test", "", log.Level, time.Millisecond*100, "0.0.0")
+		r.NoError(err)
 		mockCastClient := castai.NewClient(log, castHttp, "test1")
 
 		mockInterrupt := &mockInterruptChecker{interrupted: true}
@@ -164,7 +167,7 @@ func TestRunLoop(t *testing.T) {
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		err := handler.Run(ctx)
+		err = handler.Run(ctx)
 		require.NoError(t, err)
 
 		defer func() {
@@ -185,7 +188,8 @@ func TestRunLoop(t *testing.T) {
 		defer castS.Close()
 
 		fakeApi := fake.NewSimpleClientset(node)
-		castHttp := castai.NewDefaultClient(castS.URL, "test", log.Level, 100*time.Millisecond, "0.0.0")
+		castHttp, err := castai.NewRestyClient(castS.URL, "test", "", log.Level, 100*time.Millisecond, "0.0.0")
+		r.NoError(err)
 		mockCastClient := castai.NewClient(log, castHttp, "test1")
 
 		mockRecommendation := &mockInterruptChecker{rebalanceRecommendation: true}
@@ -201,7 +205,7 @@ func TestRunLoop(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		err := handler.Run(ctx)
+		err = handler.Run(ctx)
 		require.NoError(t, err)
 		r.Equal(1, mothershipCalls)
 	})
