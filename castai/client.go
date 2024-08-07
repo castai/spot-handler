@@ -2,7 +2,11 @@ package castai
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"net"
+	"net/http"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -26,9 +30,15 @@ func NewClient(log *logrus.Logger, rest *resty.Client, clusterID string) Client 
 	}
 }
 
-// NewDefaultClient configures a default instance of the resty.Client used to do HTTP requests.
-func NewDefaultClient(url, key string, level logrus.Level, timeout time.Duration, version string) *resty.Client {
-	client := resty.New()
+// NewRestyClient configures a default instance of the resty.Client used to do HTTP requests.
+func NewRestyClient(url, key, ca string, level logrus.Level, timeout time.Duration, version string) (*resty.Client, error) {
+	clientTransport, err := createHTTPTransport(ca)
+	if err != nil {
+		return nil, err
+	}
+	client := resty.NewWithClient(&http.Client{
+		Transport: clientTransport,
+	})
 	client.SetBaseURL(url)
 	client.SetTimeout(timeout)
 	client.Header.Set(headerAPIKey, key)
@@ -37,7 +47,43 @@ func NewDefaultClient(url, key string, level logrus.Level, timeout time.Duration
 		client.SetDebug(true)
 	}
 
-	return client
+	return client, nil
+}
+
+func createHTTPTransport(ca string) (*http.Transport, error) {
+	tlsConfig, err := createTLSConfig(ca)
+	if err != nil {
+		return nil, fmt.Errorf("creating TLS config: %v", err)
+	}
+	// Mostly copied from http.DefaultTransport.
+	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig:       tlsConfig,
+	}, nil
+}
+
+func createTLSConfig(ca string) (*tls.Config, error) {
+	if len(ca) == 0 {
+		return nil, nil
+	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM([]byte(ca)) {
+		return nil, fmt.Errorf("failed to add root certificate to CA pool")
+	}
+
+	return &tls.Config{
+		RootCAs: certPool,
+	}, nil
 }
 
 type client struct {

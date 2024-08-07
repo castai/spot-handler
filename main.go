@@ -62,13 +62,17 @@ func main() {
 	}
 
 	// Set 5 seconds until we timeout calling mothership and retry.
-	castHttpClient := castai.NewDefaultClient(
+	castHttpClient, err := castai.NewRestyClient(
 		cfg.APIUrl,
 		cfg.APIKey,
+		cfg.TLSCACert,
 		logrus.Level(cfg.LogLevel),
 		5*time.Second,
 		Version,
 	)
+	if err != nil {
+		log.Fatalf("failed to create http client: %v", err)
+	}
 	castClient := castai.NewClient(logger, castHttpClient, cfg.ClusterID)
 
 	spotHandler := handler.NewSpotHandler(
