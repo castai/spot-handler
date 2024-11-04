@@ -1,5 +1,5 @@
 build:
-	GOARCH=amd64 GOOS=linux go build -ldflags "-s -w" -o bin/spot-handler .
+	GOARCH=amd64 GOOS=linux go build -ldflags "-s -w" -o bin/spot-handler-amd64 .
 	docker build --platform=linux/amd64 -t us-docker.pkg.dev/castai-hub/library/spot-handler:$(VERSION) .
 
 push:
