@@ -42,7 +42,7 @@ func main() {
 
 	k8sVersion, err := version.Get(log, clientset)
 	if err != nil {
-		log.Fatalf("failed getting kubernetes version: %v", err)
+		log.Warnf("failed getting kubernetes version: %v", err)
 	}
 
 	handlerVersion := &version.HandlerVersion{
@@ -52,8 +52,16 @@ func main() {
 	}
 
 	log = logger.WithFields(logrus.Fields{
-		"version":     handlerVersion,
-		"k8s_version": k8sVersion.Full(),
+		"version": handlerVersion,
+	})
+
+	k8sVersionField := "unknown"
+	if k8sVersion != nil {
+		k8sVersionField = k8sVersion.Full()
+	}
+
+	log = log.WithFields(logrus.Fields{
+		"k8s_version": k8sVersionField,
 	})
 
 	interruptChecker, err := buildInterruptChecker(cfg.Provider)
