@@ -60,6 +60,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Login to Google Artifact Registry
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v2
         with:
           registry: us-docker.pkg.dev
@@ -73,6 +74,14 @@ jobs:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
           tags: us-docker.pkg.dev/castai-hub/library/spot-handler:${{ github.sha }}
+
+      - name: Login to GitHub Container Registry
+        if: github.event_name == 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push PR
         if: github.event_name == 'pull_request'
