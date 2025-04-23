@@ -74,6 +74,14 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: us-docker.pkg.dev/castai-hub/library/spot-handler:${{ github.sha }}
 
+      - name: Build and push PR
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ghcr.io/castai/spot-handler:${{ github.sha }}
+
       - name: Build and push release
         if: github.event_name == 'release'
         uses: docker/build-push-action@v4
