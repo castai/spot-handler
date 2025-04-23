@@ -1,17 +1,24 @@
-name: golangci-lint
+name: scan and lint
 on:
   pull_request:
 permissions:
   contents: read
 jobs:
   golangci:
-    name: lint
+    name: scan and lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.22
-      - uses: actions/checkout@v3
+          go-version: 1.23
+      - uses: actions/checkout@v4
+
+      - name: Run govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-file: go.mod
+          go-package: ./...
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
