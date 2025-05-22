@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	"github.com/castai/spot-handler/castai"
@@ -30,7 +32,7 @@ func main() {
 	logger := logrus.New()
 	log := logrus.WithFields(logrus.Fields{})
 
-	kubeconfig, err := retrieveKubeConfig(log)
+	kubeconfig, err := retrieveKubeConfig(log, cfg)
 	if err != nil {
 		log.Fatalf("err retrieving kubeconfig: %v", err)
 	}
@@ -125,7 +127,36 @@ func buildInterruptChecker(provider string) (handler.MetadataChecker, error) {
 	}
 }
 
-func retrieveKubeConfig(log logrus.FieldLogger) (*rest.Config, error) {
+func kubeConfigFromEnv(cfg config.Config) (*rest.Config, error) {
+	kubepath := cfg.Kubeconfig
+	if kubepath == "" {
+		return nil, nil
+	}
+
+	data, err := os.ReadFile(kubepath)
+	if err != nil {
+		return nil, fmt.Errorf("reading kubeconfig at %s: %w", kubepath, err)
+	}
+
+	restConfig, err := clientcmd.RESTConfigFromKubeConfig(data)
+	if err != nil {
+		return nil, fmt.Errorf("building rest config from kubeconfig at %s: %w", kubepath, err)
+	}
+
+	return restConfig, nil
+}
+
+func retrieveKubeConfig(log logrus.FieldLogger, cfg config.Config) (*rest.Config, error) {
+	kubeconfig, err := kubeConfigFromEnv(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	if kubeconfig != nil {
+		log.Debug("using kubeconfig from env variables")
+		return kubeconfig, nil
+	}
+
 	inClusterConfig, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
