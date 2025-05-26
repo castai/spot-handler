@@ -11,6 +11,7 @@ type Config struct {
 	APIUrl              string
 	APIKey              string
 	TLSCACert           string
+	Kubeconfig          string
 	ClusterID           string
 	Provider            string
 	LogLevel            int
@@ -31,6 +32,7 @@ func Get() Config {
 	_ = viper.BindEnv("apikey", "API_KEY")
 	_ = viper.BindEnv("apiurl", "API_URL")
 	_ = viper.BindEnv("tlscacert", "TLS_CA_CERT_FILE")
+	_ = viper.BindEnv("kubeconfig", "KUBECONFIG")
 	_ = viper.BindEnv("nodename", "NODE_NAME")
 	_ = viper.BindEnv("clusterid", "CLUSTER_ID")
 	_ = viper.BindEnv("provider", "PROVIDER")
