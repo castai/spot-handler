@@ -21,14 +21,14 @@ import (
 const CastNodeIDLabel = "provisioner.cast.ai/node-id"
 
 const (
-	taintNodeDraining = "autoscaling.cast.ai/draining"
+	taintNodeDraining       = "autoscaling.cast.ai/draining"
 	taintNodeDrainingEffect = "NoSchedule"
 
 	labelNodeDraining                  = "autoscaling.cast.ai/draining"
 	valueNodeDrainingReasonInterrupted = "spot-interruption"
 
-	cloudEventInterrupted              = "interrupted"
-	cloudEventRebalanceRecommendation  = "rebalanceRecommendation"
+	cloudEventInterrupted             = "interrupted"
+	cloudEventRebalanceRecommendation = "rebalanceRecommendation"
 
 	valueTrue = "true"
 )
@@ -138,6 +138,9 @@ func (g *SpotHandler) handleInterruption(ctx context.Context) error {
 		EventType: cloudEventInterrupted,
 		NodeID:    node.Labels[CastNodeIDLabel],
 	}
+	if node.Spec.ProviderID != "" {
+		req.ProviderID = &node.Spec.ProviderID
+	}
 	if err = g.castClient.SendCloudEvent(ctx, req); err != nil {
 		return err
 	}
@@ -210,6 +213,9 @@ func (g *SpotHandler) handleRebalanceRecommendation(ctx context.Context) error {
 	req := &castai.CloudEventRequest{
 		EventType: cloudEventRebalanceRecommendation,
 		NodeID:    node.Labels[CastNodeIDLabel],
+	}
+	if node.Spec.ProviderID != "" {
+		req.ProviderID = &node.Spec.ProviderID
 	}
 
 	return g.castClient.SendCloudEvent(ctx, req)
