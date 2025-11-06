@@ -93,8 +93,9 @@ type client struct {
 }
 
 type CloudEventRequest struct {
-	EventType string `json:"event_type"`
-	NodeID    string `json:"node_id"`
+	EventType  string  `json:"event_type"`
+	NodeID     string  `json:"node_id"`
+	ProviderID *string `json:"provider_id"`
 }
 
 func (c *client) SendCloudEvent(ctx context.Context, req *CloudEventRequest) error {

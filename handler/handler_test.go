@@ -209,6 +209,106 @@ func TestRunLoop(t *testing.T) {
 		require.NoError(t, err)
 		r.Equal(1, mothershipCalls)
 	})
+
+	t.Run("populate providerID in interruption event", func(t *testing.T) {
+		providerID := "aws:///us-east-1a/i-1234567890abcdef0"
+		nodeWithProviderID := &v1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: nodeName,
+				Labels: map[string]string{
+					CastNodeIDLabel: castNodeID,
+				},
+			},
+			Spec: v1.NodeSpec{
+				Unschedulable: false,
+				ProviderID:    providerID,
+			},
+		}
+
+		mothershipCalls := 0
+		castS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, re *http.Request) {
+			mothershipCalls++
+			var req castai.CloudEventRequest
+			r.NoError(json.NewDecoder(re.Body).Decode(&req))
+			r.Equal(castNodeID, req.NodeID)
+			r.NotNil(req.ProviderID, "ProviderID should not be nil")
+			r.Equal(providerID, *req.ProviderID, "ProviderID should match node's Spec.ProviderID")
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer castS.Close()
+
+		fakeApi := fake.NewSimpleClientset(nodeWithProviderID)
+		castHttp, err := castai.NewRestyClient(castS.URL, "test", "", log.Level, 100*time.Millisecond, "0.0.0")
+		r.NoError(err)
+		mockCastClient := castai.NewClient(log, castHttp, "test1")
+
+		mockInterrupt := &mockInterruptChecker{interrupted: true}
+		handler := SpotHandler{
+			pollWaitInterval: 100 * time.Millisecond,
+			metadataChecker:  mockInterrupt,
+			castClient:       mockCastClient,
+			nodeName:         nodeName,
+			clientset:        fakeApi,
+			log:              log,
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		err = handler.Run(ctx)
+		require.NoError(t, err)
+		r.Equal(1, mothershipCalls)
+	})
+
+	t.Run("populate providerID in rebalance recommendation event", func(t *testing.T) {
+		providerID := "gce://my-project/us-central1-a/instance-123"
+		nodeWithProviderID := &v1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: nodeName,
+				Labels: map[string]string{
+					CastNodeIDLabel: castNodeID,
+				},
+			},
+			Spec: v1.NodeSpec{
+				Unschedulable: false,
+				ProviderID:    providerID,
+			},
+		}
+
+		mothershipCalls := 0
+		castS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, re *http.Request) {
+			mothershipCalls++
+			var req castai.CloudEventRequest
+			r.NoError(json.NewDecoder(re.Body).Decode(&req))
+			r.Equal(castNodeID, req.NodeID)
+			r.NotNil(req.ProviderID, "ProviderID should not be nil")
+			r.Equal(providerID, *req.ProviderID, "ProviderID should match node's Spec.ProviderID")
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer castS.Close()
+
+		fakeApi := fake.NewSimpleClientset(nodeWithProviderID)
+		castHttp, err := castai.NewRestyClient(castS.URL, "test", "", log.Level, 100*time.Millisecond, "0.0.0")
+		r.NoError(err)
+		mockCastClient := castai.NewClient(log, castHttp, "test1")
+
+		mockRecommendation := &mockInterruptChecker{rebalanceRecommendation: true}
+		handler := SpotHandler{
+			pollWaitInterval: 100 * time.Millisecond,
+			metadataChecker:  mockRecommendation,
+			castClient:       mockCastClient,
+			nodeName:         nodeName,
+			clientset:        fakeApi,
+			log:              log,
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		err = handler.Run(ctx)
+		require.NoError(t, err)
+		r.Equal(1, mothershipCalls)
+	})
 }
 
 type mockInterruptChecker struct {
