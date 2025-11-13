@@ -148,6 +148,7 @@ func (g *SpotHandler) handleInterruption(ctx context.Context) error {
 	if node.Annotations != nil && node.Annotations[OverrideProviderIDAnnot] != "" {
 		req.ProviderID = ptr.To(node.Annotations[OverrideProviderIDAnnot])
 	}
+	g.log.Infof("sending interruption cloud event to mothership: nodeID: %s, providerID: %s", req.NodeID, ptr.Deref(req.ProviderID, ""))
 	if err = g.castClient.SendCloudEvent(ctx, req); err != nil {
 		return err
 	}
@@ -228,5 +229,6 @@ func (g *SpotHandler) handleRebalanceRecommendation(ctx context.Context) error {
 		req.ProviderID = ptr.To(node.Annotations[OverrideProviderIDAnnot])
 	}
 
+	g.log.Infof("sending rebalance recommendation cloud event to mothership: nodeID: %s, providerID: %s", req.NodeID, ptr.Deref(req.ProviderID, ""))
 	return g.castClient.SendCloudEvent(ctx, req)
 }
