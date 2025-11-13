@@ -309,6 +309,114 @@ func TestRunLoop(t *testing.T) {
 		require.NoError(t, err)
 		r.Equal(1, mothershipCalls)
 	})
+
+	t.Run("override providerID in interruption event", func(t *testing.T) {
+		originalProviderID := "aws:///us-east-1a/i-1234567890abcdef0"
+		overrideProviderID := "aws:///us-east-1b/i-0987654321fedcba0"
+		nodeWithOverride := &v1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: nodeName,
+				Labels: map[string]string{
+					CastNodeIDLabel: castNodeID,
+				},
+				Annotations: map[string]string{
+					OverrideProviderIDAnnot: overrideProviderID,
+				},
+			},
+			Spec: v1.NodeSpec{
+				Unschedulable: false,
+				ProviderID:    originalProviderID,
+			},
+		}
+
+		mothershipCalls := 0
+		castS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, re *http.Request) {
+			mothershipCalls++
+			var req castai.CloudEventRequest
+			r.NoError(json.NewDecoder(re.Body).Decode(&req))
+			r.Equal(castNodeID, req.NodeID)
+			r.NotNil(req.ProviderID, "ProviderID should not be nil")
+			r.Equal(overrideProviderID, *req.ProviderID, "ProviderID should use override annotation value")
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer castS.Close()
+
+		fakeApi := fake.NewSimpleClientset(nodeWithOverride)
+		castHttp, err := castai.NewRestyClient(castS.URL, "test", "", log.Level, 100*time.Millisecond, "0.0.0")
+		r.NoError(err)
+		mockCastClient := castai.NewClient(log, castHttp, "test1")
+
+		mockInterrupt := &mockInterruptChecker{interrupted: true}
+		handler := SpotHandler{
+			pollWaitInterval: 100 * time.Millisecond,
+			metadataChecker:  mockInterrupt,
+			castClient:       mockCastClient,
+			nodeName:         nodeName,
+			clientset:        fakeApi,
+			log:              log,
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		err = handler.Run(ctx)
+		require.NoError(t, err)
+		r.Equal(1, mothershipCalls)
+	})
+
+	t.Run("override providerID in rebalance recommendation event", func(t *testing.T) {
+		originalProviderID := "gce://my-project/us-central1-a/instance-123"
+		overrideProviderID := "gce://my-project/us-central1-b/instance-456"
+		nodeWithOverride := &v1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: nodeName,
+				Labels: map[string]string{
+					CastNodeIDLabel: castNodeID,
+				},
+				Annotations: map[string]string{
+					OverrideProviderIDAnnot: overrideProviderID,
+				},
+			},
+			Spec: v1.NodeSpec{
+				Unschedulable: false,
+				ProviderID:    originalProviderID,
+			},
+		}
+
+		mothershipCalls := 0
+		castS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, re *http.Request) {
+			mothershipCalls++
+			var req castai.CloudEventRequest
+			r.NoError(json.NewDecoder(re.Body).Decode(&req))
+			r.Equal(castNodeID, req.NodeID)
+			r.NotNil(req.ProviderID, "ProviderID should not be nil")
+			r.Equal(overrideProviderID, *req.ProviderID, "ProviderID should use override annotation value")
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer castS.Close()
+
+		fakeApi := fake.NewSimpleClientset(nodeWithOverride)
+		castHttp, err := castai.NewRestyClient(castS.URL, "test", "", log.Level, 100*time.Millisecond, "0.0.0")
+		r.NoError(err)
+		mockCastClient := castai.NewClient(log, castHttp, "test1")
+
+		mockRecommendation := &mockInterruptChecker{rebalanceRecommendation: true}
+		handler := SpotHandler{
+			pollWaitInterval: 100 * time.Millisecond,
+			metadataChecker:  mockRecommendation,
+			castClient:       mockCastClient,
+			nodeName:         nodeName,
+			clientset:        fakeApi,
+			log:              log,
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		err = handler.Run(ctx)
+		require.NoError(t, err)
+		r.Equal(1, mothershipCalls)
+	})
 }
 
 type mockInterruptChecker struct {
