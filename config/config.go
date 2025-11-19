@@ -17,6 +17,7 @@ type Config struct {
 	LogLevel            int
 	PprofPort           int
 	PollIntervalSeconds int
+	Phase2Permissions   bool
 }
 
 var cfg *Config
@@ -39,6 +40,8 @@ func Get() Config {
 
 	_ = viper.BindEnv("pollintervalseconds", "POLL_INTERVAL_SECONDS")
 	_ = viper.BindEnv("pprofport", "PPROF_PORT")
+
+	_ = viper.BindEnv("phase2permissions", "PHASE2_PERMISSIONS")
 
 	cfg = &Config{}
 	if err := viper.Unmarshal(&cfg); err != nil {

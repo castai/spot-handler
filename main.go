@@ -92,6 +92,7 @@ func main() {
 		interruptChecker,
 		time.Duration(cfg.PollIntervalSeconds)*time.Second,
 		cfg.NodeName,
+		cfg.Phase2Permissions,
 	)
 
 	if cfg.PprofPort != 0 {
