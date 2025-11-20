@@ -158,10 +158,10 @@ func (g *SpotHandler) handleInterruption(ctx context.Context) error {
 
 	if g.phase2Permissions {
 		return g.taintNode(ctx, node)
-	} else {
-		g.log.Warn("skipping node tainting, phase2 permissions not enabled")
-		return nil
 	}
+
+	g.log.Info("skipping node tainting, phase2 permissions not enabled")
+	return nil
 }
 
 func (g *SpotHandler) taintNode(ctx context.Context, node *v1.Node) error {

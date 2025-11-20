@@ -57,12 +57,13 @@ func TestRunLoop(t *testing.T) {
 
 		mockInterrupt := &mockInterruptChecker{interrupted: true}
 		handler := SpotHandler{
-			pollWaitInterval: 100 * time.Millisecond,
-			metadataChecker:  mockInterrupt,
-			castClient:       mockCastClient,
-			nodeName:         nodeName,
-			clientset:        fakeApi,
-			log:              log,
+			pollWaitInterval:  100 * time.Millisecond,
+			metadataChecker:   mockInterrupt,
+			castClient:        mockCastClient,
+			nodeName:          nodeName,
+			clientset:         fakeApi,
+			log:               log,
+			phase2Permissions: true,
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -76,6 +77,61 @@ func TestRunLoop(t *testing.T) {
 		r.Equal(true, node.Spec.Unschedulable)
 		r.Equal(valueNodeDrainingReasonInterrupted, node.Labels[labelNodeDraining])
 		r.Contains(node.Spec.Taints, v1.Taint{
+			Key:    taintNodeDraining,
+			Value:  valueTrue,
+			Effect: taintNodeDrainingEffect,
+		})
+	})
+
+	t.Run("do not taint node if not enough permissions", func(t *testing.T) {
+		mothershipCalls := 0
+		castS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, re *http.Request) {
+			mothershipCalls++
+			var req castai.CloudEventRequest
+			r.NoError(json.NewDecoder(re.Body).Decode(&req))
+			r.Equal(req.NodeID, castNodeID)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer castS.Close()
+
+		node2 := &v1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: nodeName,
+				Labels: map[string]string{
+					CastNodeIDLabel: castNodeID,
+				},
+			},
+			Spec: v1.NodeSpec{
+				Unschedulable: false,
+			},
+		}
+		fakeApi := fake.NewSimpleClientset(node2)
+		castHttp, err := castai.NewRestyClient(castS.URL, "test", "", log.Level, 100*time.Millisecond, "0.0.0")
+		r.NoError(err)
+		mockCastClient := castai.NewClient(log, castHttp, "test2")
+
+		mockInterrupt := &mockInterruptChecker{interrupted: true}
+		handler := SpotHandler{
+			pollWaitInterval:  100 * time.Millisecond,
+			metadataChecker:   mockInterrupt,
+			castClient:        mockCastClient,
+			nodeName:          nodeName,
+			clientset:         fakeApi,
+			log:               log,
+			phase2Permissions: false,
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		err = handler.Run(ctx)
+		require.NoError(t, err)
+		r.Equal(1, mothershipCalls)
+
+		node2, _ = fakeApi.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+		r.Equal(false, node2.Spec.Unschedulable)
+		r.NotEqual(valueNodeDrainingReasonInterrupted, node2.Labels[labelNodeDraining])
+		r.NotContains(node2.Spec.Taints, v1.Taint{
 			Key:    taintNodeDraining,
 			Value:  valueTrue,
 			Effect: taintNodeDrainingEffect,
