@@ -43,13 +43,14 @@ type MetadataChecker interface {
 }
 
 type SpotHandler struct {
-	castClient       castai.Client
-	clientset        kubernetes.Interface
-	metadataChecker  MetadataChecker
-	nodeName         string
-	pollWaitInterval time.Duration
-	log              logrus.FieldLogger
-	gracePeriod      time.Duration
+	castClient        castai.Client
+	clientset         kubernetes.Interface
+	metadataChecker   MetadataChecker
+	nodeName          string
+	pollWaitInterval  time.Duration
+	log               logrus.FieldLogger
+	gracePeriod       time.Duration
+	phase2Permissions bool
 }
 
 func NewSpotHandler(
@@ -59,15 +60,17 @@ func NewSpotHandler(
 	metadataChecker MetadataChecker,
 	pollWaitInterval time.Duration,
 	nodeName string,
+	phase2Permissions bool,
 ) *SpotHandler {
 	return &SpotHandler{
-		castClient:       castClient,
-		clientset:        clientset,
-		metadataChecker:  metadataChecker,
-		log:              log,
-		nodeName:         nodeName,
-		pollWaitInterval: pollWaitInterval,
-		gracePeriod:      30 * time.Second,
+		castClient:        castClient,
+		clientset:         clientset,
+		metadataChecker:   metadataChecker,
+		log:               log,
+		nodeName:          nodeName,
+		pollWaitInterval:  pollWaitInterval,
+		gracePeriod:       30 * time.Second,
+		phase2Permissions: phase2Permissions,
 	}
 }
 
@@ -153,7 +156,12 @@ func (g *SpotHandler) handleInterruption(ctx context.Context) error {
 		return err
 	}
 
-	return g.taintNode(ctx, node)
+	if g.phase2Permissions {
+		return g.taintNode(ctx, node)
+	}
+
+	g.log.Info("skipping node tainting, phase2 permissions not enabled")
+	return nil
 }
 
 func (g *SpotHandler) taintNode(ctx context.Context, node *v1.Node) error {
