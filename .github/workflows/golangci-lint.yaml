@@ -20,7 +20,7 @@ jobs:
           go-package: ./...
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           args: --timeout=5m --out-format=colored-line-number
-          skip-pkg-cache: true
+          skip-cache: true
