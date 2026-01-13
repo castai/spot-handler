@@ -18,7 +18,8 @@ func TestAwsInterruptChecker(t *testing.T) {
 	router.HandleFunc("/latest/api/token", func(writer http.ResponseWriter, request *http.Request) {
 
 		writer.Header().Set("X-aws-ec2-metadata-token-ttl-seconds", "1000")
-		fmt.Fprintf(writer, "TOKEN")
+		_, err := fmt.Fprintf(writer, "TOKEN")
+		require.NoError(t, err)
 	})
 	router.HandleFunc("/latest/meta-data/spot/instance-action", func(writer http.ResponseWriter, request *http.Request) {
 		action := ec2metadata.InstanceAction{

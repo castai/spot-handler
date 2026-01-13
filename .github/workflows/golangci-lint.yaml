@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.23
+          go-version: 1.25
       - uses: actions/checkout@v4
 
       - name: Run govulncheck
@@ -20,7 +20,7 @@ jobs:
           go-package: ./...
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v9
         with:
           args: --timeout=5m
-          skip-pkg-cache: true
+          skip-cache: true
