@@ -101,6 +101,7 @@ func (g *SpotHandler) Run(ctx context.Context) error {
 						return err
 					}
 					// Stop after ACK.
+					g.log.Infof("stopping poll ticker")
 					t.Stop()
 				}
 
