@@ -124,11 +124,14 @@ func (g *SpotHandler) Run(ctx context.Context) error {
 			if err != nil {
 				g.log.Errorf("checking for cloud events: %v", err)
 			}
+			g.log.Debugf("poll tick completed")
 		case <-deadline.C:
+			g.log.Infof("grace period elapsed, exiting")
 			return nil
 		case <-ctx.Done():
 			// Signal received, starting countdown until exiting the loop.
 			once.Do(func() {
+				g.log.Infof("termination signal received, waiting grace period of %s before exit", g.gracePeriod)
 				deadline.Reset(g.gracePeriod)
 			})
 		}
