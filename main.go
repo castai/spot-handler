@@ -30,6 +30,7 @@ func main() {
 	cfg := config.Get()
 
 	logger := logrus.New()
+	logger.SetLevel(logrus.Level(cfg.LogLevel))
 	log := logrus.WithFields(logrus.Fields{})
 
 	kubeconfig, err := retrieveKubeConfig(log, cfg)
