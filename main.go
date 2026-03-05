@@ -6,6 +6,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -72,9 +73,16 @@ func main() {
 		log.Fatalf("interrupt checker: %v", err)
 	}
 
+	apiURL := cfg.APIUrl
+	if !strings.HasPrefix(apiURL, "http://") &&
+		!strings.HasPrefix(apiURL, "https://") {
+		log.Warnf("API_URL %q is missing protocol scheme, will convert to https://%s", apiURL, apiURL)
+		apiURL = "https://" + apiURL
+	}
+
 	// Set 5 seconds until we timeout calling mothership and retry.
 	castHttpClient, err := castai.NewRestyClient(
-		cfg.APIUrl,
+		apiURL,
 		cfg.APIKey,
 		cfg.TLSCACert,
 		logrus.Level(cfg.LogLevel),
