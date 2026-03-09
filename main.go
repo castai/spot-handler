@@ -31,7 +31,7 @@ func main() {
 
 	logger := logrus.New()
 	logger.SetLevel(logrus.Level(cfg.LogLevel))
-	log := logrus.WithFields(logrus.Fields{})
+	log := logger.WithFields(logrus.Fields{})
 
 	kubeconfig, err := retrieveKubeConfig(log, cfg)
 	if err != nil {
@@ -67,7 +67,7 @@ func main() {
 		"k8s_version": k8sVersionField,
 	})
 
-	interruptChecker, err := buildInterruptChecker(cfg.Provider)
+	interruptChecker, err := buildInterruptChecker(cfg.Provider, log)
 	if err != nil {
 		log.Fatalf("interrupt checker: %v", err)
 	}
@@ -116,10 +116,10 @@ func main() {
 	}
 }
 
-func buildInterruptChecker(provider string) (handler.MetadataChecker, error) {
+func buildInterruptChecker(provider string, log logrus.FieldLogger) (handler.MetadataChecker, error) {
 	switch provider {
 	case "azure":
-		return handler.NewAzureInterruptChecker(), nil
+		return handler.NewAzureInterruptChecker(log), nil
 	case "gcp":
 		return handler.NewGCPChecker(), nil
 	case "aws":

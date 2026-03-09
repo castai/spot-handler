@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/sirupsen/logrus"
 )
 
 // NewAzureInterruptChecker checks for azure spot interrupt event from metadata server.
 // See https://docs.microsoft.com/en-us/azure/virtual-machines/linux/scheduled-events#endpoint-discovery
-func NewAzureInterruptChecker() MetadataChecker {
+func NewAzureInterruptChecker(log logrus.FieldLogger) MetadataChecker {
 	client := resty.New()
 	// Times out if set to 1 second, after 2 we will try again soon anyway
 	client.SetTimeout(time.Second * 2)
@@ -18,12 +19,14 @@ func NewAzureInterruptChecker() MetadataChecker {
 	return &azureInterruptChecker{
 		client:            client,
 		metadataServerURL: "http://169.254.169.254",
+		log:               log,
 	}
 }
 
 type azureInterruptChecker struct {
 	client            *resty.Client
 	metadataServerURL string
+	log               logrus.FieldLogger
 }
 
 type azureSpotScheduledEvent struct {
