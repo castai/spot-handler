@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,9 +33,11 @@ func TestAzureInterruptChecker(t *testing.T) {
 	}))
 	defer s.Close()
 
+	log := logrus.New()
 	checker := azureInterruptChecker{
 		client:            resty.New(),
 		metadataServerURL: s.URL,
+		log:               log,
 	}
 
 	interrupted, err := checker.CheckInterrupt(context.Background())
