@@ -1,4 +1,10 @@
 # CAST AI Spot handler
+
+> [!WARNING]
+> **This repository is archived and no longer maintained.**
+> Development has been migrated to an internal GitLab repository.
+> Please do not submit issues or pull requests here.
+
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fcastai%2Fspot-handler.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fcastai%2Fspot-handler?ref=badge_shield)
 
 
