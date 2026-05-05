@@ -1,6 +1,6 @@
 module github.com/castai/spot-handler
 
-go 1.25.5
+go 1.26.2
 
 require (
 	cloud.google.com/go/compute/metadata v0.6.0
